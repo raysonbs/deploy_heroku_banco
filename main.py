@@ -4,7 +4,7 @@ import os
 
 
 
-df = pd.read_csv('D:\Projetos\Deploy_Heroku_Banco\CLEAN_FIFA23_official_data.csv')
+df = pd.read_csv(r'D:\Projetos\Deploy_Heroku_Banco\CLEAN_FIFA23_official_data.csv')
 # df
 
 nomes = df['Name'].unique().tolist()
