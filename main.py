@@ -7,41 +7,6 @@ from sqlalchemy import create_engine
 import time
 
 
-
-df = pd.read_csv('CLEAN_FIFA23_official_data.csv')
-# df
-
-nomes = df['Name'].unique().tolist()
-nomes.insert(0, "Todos")  # Adiciona a opção "Todos" no início da lista
-
-
-Nome = st.sidebar.selectbox("Nome",nomes)
-
-if Nome == "Todos":
-    df = df
-    df
-
-else:
-    df = df[df['Name'] == Nome]
-    df
-
-
-st.write('Teste')
-
-
-
-
-username = os.getenv('username')
-# password = os.getenv('password')
-# host = os.getenv('host')
-# port = os.getenv('port')
-# database = os.getenv('database')
-url = os.getenv('url')
-
-st.write(username)
-st.write(url)
-
-
 def download_certificate():
     try:
         # Obtém a URL do certificado a partir da variável de ambiente
@@ -160,5 +125,3 @@ st.dataframe(df_filtrado_anos,
     "image_league": st.column_config.ImageColumn('Escudo'),
     })
 
-
-st.write("teste2")
