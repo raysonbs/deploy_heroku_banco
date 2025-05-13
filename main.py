@@ -85,7 +85,7 @@ def load_data():
     # Configurações SSL
     ssl_args = {
         'ssl': {
-            'ca': caminho_certificado_temp  # Certifique-se de que o caminho é válido
+            'ca': cert_path  # Certifique-se de que o caminho é válido
         }
     }
 
