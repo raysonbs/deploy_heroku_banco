@@ -27,8 +27,10 @@ st.write('Teste')
 
 
 
-# username = os.getenv('username')
+username = os.getenv('username')
 # password = os.getenv('password')
 # host = os.getenv('host')
 # port = os.getenv('port')
 # database = os.getenv('database')
+
+st.write(username)
