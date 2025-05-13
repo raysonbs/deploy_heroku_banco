@@ -1,2 +1,2 @@
-web: sh setup.sh && streamlit run Ligas.py
+web: sh setup.sh && streamlit run main.py
 
