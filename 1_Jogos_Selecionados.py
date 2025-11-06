@@ -81,7 +81,7 @@ else:
 
 
 df_jogos_selecionados['liga_nome','data_horario','odds_ft_over05','home_name','away_name',
-                      'método','temporada']
+                      ]
 
 # st.dataframe(df_filtrado_anos,
 #     column_config={ 
