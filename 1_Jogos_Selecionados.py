@@ -80,7 +80,7 @@ else:
     st.error("Os dados das ligas não foram carregados.")
 
 
-df_jogos_selecionados[['liga_nome','data_horario','odds_ft_over05','home_name','away_name',
-                       'odds_ft_1','odds_ft_2','método','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A','temporadaa']]
+df_jogos_selecionados = df_jogos_selecionados[['liga_nome','data_horario','odds_ft_over05','home_name','away_name','odds_ft_1','odds_ft_2','método','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A','temporadaa']]
 
 
+st.dataframe(df_jogos_selecionados, use_container_width=True) 
