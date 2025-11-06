@@ -81,7 +81,7 @@ else:
 
 
 df_jogos_selecionados[['liga_nome','data_horario','odds_ft_over05','home_name','away_name',
-                       'odds_ft_1','odds_ft_2','método','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A','temporadaa']]
+                       'odds_ft_1','odds_ft_2','método','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A','temporadaa']].sort_values(by='data_horario', ascending=True, inplace=True)
 
 # st.dataframe(df_filtrado_anos,
 #     column_config={ 
