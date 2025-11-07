@@ -5,7 +5,13 @@ import tempfile
 import requests
 from sqlalchemy import create_engine
 import time
-import shutil # Para limpeza de diretórios temporários
+import shutil
+import datetime # Importado para cálculos com tempo
+
+# --- Configurações Globais ---
+# Define o tempo de vida do cache para os dados da API em minutos
+API_REFRESH_INTERVAL_MINUTES = 20
+CACHE_DURATION_SECONDS = API_REFRESH_INTERVAL_MINUTES * 60
 
 # --- Gerenciamento do Certificado SSL ---
 def download_and_store_certificate():
@@ -14,11 +20,12 @@ def download_and_store_certificate():
     em st.session_state. Retorna o caminho para o arquivo do certificado.
     """
     # Verifica se o certificado já está no session_state e se o arquivo ainda existe
+    # e se o caminho não está vazio (para evitar erro com None ou string vazia)
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
-       not os.path.exists(st.session_state.cert_path):
+       (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
         st.info("Baixando certificado SSL...")
-        url = os.getenv('url')
+        url = os.getenv('urls')
 
         if not url:
             st.error("A variável de ambiente 'URL_DO_CERTIFICADO' não está definida.")
@@ -29,7 +36,6 @@ def download_and_store_certificate():
             response.raise_for_status() # Verifica se a requisição foi bem-sucedida
 
             # Cria um diretório temporário para armazenar o certificado
-            # Isso é mais seguro para garantir que o arquivo não será sobrescrito/apagado por outro processo
             temp_dir = tempfile.mkdtemp()
             cert_file_name = "certificado.crt"
             cert_full_path = os.path.join(temp_dir, cert_file_name)
@@ -99,7 +105,6 @@ def load_data():
         )
         
         # Carrega os dados da tabela para um DataFrame
-        # Usando 'with engine.connect() as connection:' para gerenciar a conexão
         with engine.connect() as connection:
             df_jogos = pd.read_sql_table('temporadas_jogos_filtrados_2026', con=connection)
         
@@ -113,12 +118,12 @@ def load_data():
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
 st.title("App de Análise de Jogos ⚽")
-st.write("Dados de jogos filtrados com cache de sessão para otimização.")
+st.write(f"Dados de jogos filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 # --- Inicialização das Variáveis de Estado da Sessão ---
 # Estas variáveis persistem entre os reruns e as navegações de página
 if "last_loaded" not in st.session_state:
-    st.session_state["last_loaded"] = 0  # Timestamp da última carga de dados
+    st.session_state["last_loaded"] = 0  # Timestamp da última carga de dados (Unix timestamp)
 if "data_jogos_selecionados" not in st.session_state:
     st.session_state["data_jogos_selecionados"] = None # DataFrame principal
 if "cert_path" not in st.session_state:
@@ -126,12 +131,11 @@ if "cert_path" not in st.session_state:
 if "cert_temp_dir" not in st.session_state:
     st.session_state["cert_temp_dir"] = None # Diretório temporário do certificado para limpeza
 
-# --- Lógica de Caching de Dados (10 minutos) ---
-# Esta variável local irá segurar o DataFrame para o rerun atual
-current_df_jogos_selecionados = None
+# --- Lógica de Caching de Dados ---
+current_df_jogos_selecionados = None # Esta variável local irá segurar o DataFrame para o rerun atual
 
 # Verifica se os dados precisam ser carregados/recarregados
-cache_expired = (time.time() - st.session_state["last_loaded"]) > 600 # 600 segundos = 10 minutos
+cache_expired = (time.time() - st.session_state["last_loaded"]) > CACHE_DURATION_SECONDS
 
 if st.session_state["data_jogos_selecionados"] is None or cache_expired:
     
@@ -145,7 +149,7 @@ if st.session_state["data_jogos_selecionados"] is None or cache_expired:
     
     if temp_df is not None:
         st.session_state["data_jogos_selecionados"] = temp_df
-        st.session_state["last_loaded"] = time.time()
+        st.session_state["last_loaded"] = time.time() # Atualiza o timestamp na carga bem-sucedida
         current_df_jogos_selecionados = temp_df # Atribui ao local para este rerun
         st.success("Dados carregados e atualizados no cache da sessão.")
     else:
@@ -181,24 +185,38 @@ if st.button("Forçar Recarregamento dos Dados (Limpar Cache) 🔄"):
 
 # --- Exibição dos Dados no Streamlit ---
 if current_df_jogos_selecionados is not None:
-    # Lista de colunas esperadas
-    required_cols = [
-        'liga_nome','data_horario','odds_ft_over05','home_name','away_name',
-        'odds_ft_1','odds_ft_2','método','Media_Gols_F_H','Media_Gols_F_A',
-        'CV_Gols_F_H','CV_Gols_F_A','temporadaa'
-    ]
-    
-    # Verifica se todas as colunas esperadas estão presentes no DataFrame carregado
-    missing_cols = [col for col in required_cols if col not in current_df_jogos_selecionados.columns]
-    
-    if not missing_cols:
-        # Se todas as colunas existirem, filtra e exibe
-        df_filtered_for_display = current_df_jogos_selecionados[required_cols]
-        st.subheader("Dados de Jogos Carregados:")
-        st.dataframe(df_filtered_for_display, use_container_width=True)
-    else:
-        # Caso contrário, avisa sobre as colunas ausentes e exibe o DataFrame completo
-        st.warning(f"O DataFrame carregado não possui as colunas esperadas: {', '.join(missing_cols)}. Exibindo todas as colunas disponíveis.")
-        st.dataframe(current_df_jogos_selecionados, use_container_width=True)
+    st.subheader("Dados de Jogos Carregados:")
+    # Exibe o DataFrame completo sem checagem de colunas
+    st.dataframe(current_df_jogos_selecionados, use_container_width=True)
 else:
     st.warning("Nenhum dado de jogos disponível para exibição. Verifique as mensagens de erro e carregamento acima.")
+
+# --- Seção do Contador Decrescente ---
+st.markdown("---") # Separador visual simples
+st.subheader("📊 Status da Sessão de Dados") # Título mais genérico
+
+if st.session_state["last_loaded"] > 0 and current_df_jogos_selecionados is not None:
+    # Calcula quando o cache irá expirar (Unix timestamp)
+    last_loaded_timestamp = st.session_state["last_loaded"]
+    expiration_timestamp = last_loaded_timestamp + CACHE_DURATION_SECONDS
+
+    # Calcula o tempo restante
+    current_time = time.time()
+    remaining_seconds = expiration_timestamp - current_time
+
+    if remaining_seconds > 0:
+        # Converte segundos para minutos e segundos para exibição
+        minutes = int(remaining_seconds // 60)
+        seconds = int(remaining_seconds % 60)
+        
+        # Exibe o tempo restante usando st.metric para um visual agradável
+        st.metric(label=f"Próxima atualização automática em aproximadamente", value=f"{minutes:02d}m {seconds:02d}s")
+        st.caption(
+            f"Os dados foram carregados pela última vez em: "
+            f"**{datetime.datetime.fromtimestamp(last_loaded_timestamp).strftime('%d/%m/%Y %H:%M:%S')}**."
+            f" O contador atualiza a cada interação ou recarregamento da página."
+        )
+    else:
+        st.warning("O cache dos dados expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.")
+else:
+    st.info("O contador do cache será iniciado após o primeiro carregamento bem-sucedido dos dados.")
