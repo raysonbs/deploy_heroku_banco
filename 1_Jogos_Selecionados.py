@@ -117,8 +117,8 @@ def load_data():
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
-st.title("App de Análise de Jogos ⚽")
-st.write(f"Dados de jogos filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
+st.title("Jogos Selecionados ⚽")
+# st.write(f"Dados de jogos filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 # --- Inicialização das Variáveis de Estado da Sessão ---
 # Estas variáveis persistem entre os reruns e as navegações de página
