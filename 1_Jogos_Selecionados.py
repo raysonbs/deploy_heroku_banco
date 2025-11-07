@@ -161,28 +161,6 @@ else:
     st.info(f"Usando dados em cache da sessão (última carga há {time_since_last_load} segundos).")
     current_df_jogos_selecionados = st.session_state["data_jogos_selecionados"] # Atribui do cache ao local
 
-# --- Botão para Forçar Recarregamento (Limpar Cache) ---
-if st.button("Forçar Recarregamento dos Dados (Limpar Cache) 🔄"):
-    st.info("Forçando a limpeza do cache de dados e recarregamento...")
-    
-    # Limpa as entradas de dados do cache
-    if 'data_jogos_selecionados' in st.session_state:
-        del st.session_state['data_jogos_selecionados']
-    if 'last_loaded' in st.session_state:
-        del st.session_state['last_loaded']
-        
-    # Tenta limpar o diretório temporário do certificado
-    if st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
-        try:
-            shutil.rmtree(st.session_state.cert_temp_dir)
-            st.info(f"Diretório temporário do certificado '{st.session_state.cert_temp_dir}' limpo.")
-        except Exception as e:
-            st.warning(f"Não foi possível limpar o diretório temporário do certificado: {e}")
-        st.session_state.cert_path = None
-        st.session_state.cert_temp_dir = None
-        
-    st.rerun() # Dispara um rerun para que a lógica de carregamento seja reavaliada imediatamente
-
 # --- Exibição dos Dados no Streamlit ---
 if current_df_jogos_selecionados is not None:
     st.subheader("Dados de Jogos Carregados:")
@@ -220,3 +198,24 @@ if st.session_state["last_loaded"] > 0 and current_df_jogos_selecionados is not 
         st.warning("O cache dos dados expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.")
 else:
     st.info("O contador do cache será iniciado após o primeiro carregamento bem-sucedido dos dados.")
+
+if st.button("Forçar Recarregamento dos Dados (Limpar Cache) 🔄"):
+    st.info("Forçando a limpeza do cache de dados e recarregamento...")
+    
+    # Limpa as entradas de dados do cache
+    if 'data_jogos_selecionados' in st.session_state:
+        del st.session_state['data_jogos_selecionados']
+    if 'last_loaded' in st.session_state:
+        del st.session_state['last_loaded']
+        
+    # Tenta limpar o diretório temporário do certificado
+    if st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
+        try:
+            shutil.rmtree(st.session_state.cert_temp_dir)
+            st.info(f"Diretório temporário do certificado '{st.session_state.cert_temp_dir}' limpo.")
+        except Exception as e:
+            st.warning(f"Não foi possível limpar o diretório temporário do certificado: {e}")
+        st.session_state.cert_path = None
+        st.session_state.cert_temp_dir = None
+        
+    st.rerun() # Dispara um rerun para que a lógica de carregamento seja reavaliada imediatamente
