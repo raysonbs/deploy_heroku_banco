@@ -18,7 +18,7 @@ def download_and_store_certificate():
        not os.path.exists(st.session_state.cert_path):
         
         st.info("Baixando certificado SSL...")
-        url = os.getenv('URL_DO_CERTIFICADO')
+        url = os.getenv('url')
 
         if not url:
             st.error("A variável de ambiente 'URL_DO_CERTIFICADO' não está definida.")
