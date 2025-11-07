@@ -158,12 +158,12 @@ if st.session_state["data_jogos_selecionados"] is None or cache_expired:
 else:
     # Os dados já estão no session_state e não expiraram
     time_since_last_load = int(time.time() - st.session_state['last_loaded'])
-    st.info(f"Usando dados em cache da sessão (última carga há {time_since_last_load} segundos).")
+    # st.info(f"Usando dados em cache da sessão (última carga há {time_since_last_load} segundos).")
     current_df_jogos_selecionados = st.session_state["data_jogos_selecionados"] # Atribui do cache ao local
 
 # --- Exibição dos Dados no Streamlit ---
 if current_df_jogos_selecionados is not None:
-    st.subheader("Dados de Jogos Carregados:")
+    # st.subheader("Dados de Jogos Carregados:")
     # Exibe o DataFrame completo sem checagem de colunas
     st.dataframe(current_df_jogos_selecionados, use_container_width=True)
 else:
