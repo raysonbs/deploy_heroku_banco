@@ -6,26 +6,34 @@ import requests
 from sqlalchemy import create_engine
 import time
 import shutil
-import datetime # Importado para cálculos com tempo
+import datetime
 
 # --- Configurações Globais ---
 # Define o tempo de vida do cache para os dados da API em minutos
 API_REFRESH_INTERVAL_MINUTES = 20
 CACHE_DURATION_SECONDS = API_REFRESH_INTERVAL_MINUTES * 60
 
+# --- Configurações Específicas da Página ---
+# Nome da tabela do banco de dados para esta página
+DB_TABLE_NAME = 'diagnostico_Over05FT'
+# Prefixo para as chaves do session_state desta página, para evitar conflitos
+PAGE_SESSION_STATE_PREFIX = f"{DB_TABLE_NAME}_"
+
 # --- Gerenciamento do Certificado SSL ---
 def download_and_store_certificate():
     """
     Baixa o certificado SSL se ainda não estiver baixado e armazenado
     em st.session_state. Retorna o caminho para o arquivo do certificado.
+    Esta função mantém as chaves 'cert_path' e 'cert_temp_dir' sem prefixo,
+    assumindo que o certificado é um recurso compartilhado para conexão
+    ao banco de dados em todo o aplicativo.
     """
     # Verifica se o certificado já está no session_state e se o arquivo ainda existe
-    # e se o caminho não está vazio (para evitar erro com None ou string vazia)
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
         st.info("Baixando certificado SSL...")
-        url = os.getenv('url')
+        url = os.getenv('URL_DO_CERTIFICADO') # Variável de ambiente para a URL do certificado
 
         if not url:
             st.error("A variável de ambiente 'URL_DO_CERTIFICADO' não está definida.")
@@ -62,7 +70,8 @@ def download_and_store_certificate():
 # --- Função de Carregamento de Dados do Banco ---
 def load_data():
     """
-    Carrega os dados do banco de dados MySQL usando o certificado SSL.
+    Carrega os dados do banco de dados MySQL usando o certificado SSL,
+    da tabela especificada por DB_TABLE_NAME.
     Retorna um DataFrame pandas ou None em caso de erro.
     """
     # Garante que o certificado seja baixado e seu caminho seja obtido
@@ -72,15 +81,15 @@ def load_data():
         return None
 
     # Informações de conexão (obtidas de variáveis de ambiente)
-    username = os.getenv('username')
-    password = os.getenv('password')
-    host = os.getenv('host')
-    port = os.getenv('port')
-    database = os.getenv('database')
+    username = os.getenv('DB_USERNAME') # Use nomes mais específicos para variáveis de ambiente
+    password = os.getenv('DB_PASSWORD')
+    host = os.getenv('DB_HOST')
+    port = os.getenv('DB_PORT')
+    database = os.getenv('DB_DATABASE')
 
     # Verifica se todas as variáveis de ambiente necessárias estão definidas
     if not all([username, password, host, port, database]):
-        st.error("Variáveis de ambiente para conexão com o banco de dados incompletas (username, password, host, port, database).")
+        st.error("Variáveis de ambiente para conexão com o banco de dados incompletas (DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_DATABASE).")
         return None
     
     # Converte a porta para inteiro
@@ -104,78 +113,73 @@ def load_data():
             connect_args=ssl_args
         )
         
-        # Carrega os dados da tabela para um DataFrame
+        # Carrega os dados da tabela para um DataFrame (alterado para DB_TABLE_NAME)
         with engine.connect() as connection:
-            df_diagnostico = pd.read_sql_table('diagnostico_Over05FT', con=connection)
+            df = pd.read_sql_table(DB_TABLE_NAME, con=connection)
         
-        st.success("Dados carregados do banco de dados com sucesso!")
-        return df_diagnostico
+        st.success(f"Dados carregados da tabela '{DB_TABLE_NAME}' com sucesso!")
+        return df
     
     except Exception as e:
-        st.error(f"Erro ao conectar ou carregar dados do banco de dados: {e}")
+        st.error(f"Erro ao conectar ou carregar dados do banco de dados da tabela '{DB_TABLE_NAME}': {e}")
         return None
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
-st.title("Jogos Selecionados ⚽")
-# st.write(f"Dados de jogos filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
+st.title(f"Diagnóstico de Jogos: {DB_TABLE_NAME.replace('_', ' ')} 📊")
+st.write(f"Dados da tabela `{DB_TABLE_NAME}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
-# --- Inicialização das Variáveis de Estado da Sessão ---
-# Estas variáveis persistem entre os reruns e as navegações de página
-if "last_loaded" not in st.session_state:
-    st.session_state["last_loaded"] = 0  # Timestamp da última carga de dados (Unix timestamp)
-if "data_jogos_selecionados" not in st.session_state:
-    st.session_state["data_jogos_selecionados"] = None # DataFrame principal
-if "cert_path" not in st.session_state:
-    st.session_state["cert_path"] = None # Caminho para o certificado baixado
-if "cert_temp_dir" not in st.session_state:
-    st.session_state["cert_temp_dir"] = None # Diretório temporário do certificado para limpeza
+# --- Inicialização das Variáveis de Estado da Sessão (com prefixo) ---
+if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = 0  # Timestamp da última carga de dados (Unix timestamp)
+if f"{PAGE_SESSION_STATE_PREFIX}data" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = None # DataFrame principal (para esta página)
+# As chaves 'cert_path' e 'cert_temp_dir' são mantidas sem prefixo, como discutido.
 
-# --- Lógica de Caching de Dados ---
-current_df_jogos_selecionados = None # Esta variável local irá segurar o DataFrame para o rerun atual
+# --- Lógica de Caching de Dados (usando chaves prefixadas) ---
+current_df_page_specific = None # Esta variável local irá segurar o DataFrame para o rerun atual
 
 # Verifica se os dados precisam ser carregados/recarregados
-cache_expired = (time.time() - st.session_state["last_loaded"]) > CACHE_DURATION_SECONDS
+cache_expired = (time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]) > CACHE_DURATION_SECONDS
 
-if st.session_state["data_jogos_selecionados"] is None or cache_expired:
+if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired:
     
-    if st.session_state["data_jogos_selecionados"] is None:
-        st.info("Primeiro carregamento dos dados da sessão ou dados não encontrados no cache.")
+    if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None:
+        st.info(f"Primeiro carregamento dos dados da sessão para '{DB_TABLE_NAME}' ou dados não encontrados no cache.")
     elif cache_expired:
-        st.warning(f"Cache de dados expirado (última carga há {int(time.time() - st.session_state['last_loaded'])} segundos). Recarregando dados...")
+        st.warning(f"Cache de dados para '{DB_TABLE_NAME}' expirado (última carga há {int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])} segundos). Recarregando dados...")
     
     # Tenta carregar os dados. load_data() já lida com o certificado.
     temp_df = load_data() 
     
     if temp_df is not None:
-        st.session_state["data_jogos_selecionados"] = temp_df
-        st.session_state["last_loaded"] = time.time() # Atualiza o timestamp na carga bem-sucedida
-        current_df_jogos_selecionados = temp_df # Atribui ao local para este rerun
-        st.success("Dados carregados e atualizados no cache da sessão.")
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = temp_df
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time() # Atualiza o timestamp na carga bem-sucedida
+        current_df_page_specific = temp_df # Atribui ao local para este rerun
+        st.success(f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão.")
     else:
-        st.error("Falha crítica ao carregar dados do banco de dados. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
-        current_df_jogos_selecionados = None # Garante que o local seja None se a carga falhou
+        st.error(f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
+        current_df_page_specific = None # Garante que o local seja None se a carga falhou
 else:
     # Os dados já estão no session_state e não expiraram
-    time_since_last_load = int(time.time() - st.session_state['last_loaded'])
-    # st.info(f"Usando dados em cache da sessão (última carga há {time_since_last_load} segundos).")
-    current_df_jogos_selecionados = st.session_state["data_jogos_selecionados"] # Atribui do cache ao local
+    time_since_last_load = int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])
+    st.info(f"Usando dados em cache da sessão para '{DB_TABLE_NAME}' (última carga há {time_since_last_load} segundos).")
+    current_df_page_specific = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] # Atribui do cache ao local
 
 # --- Exibição dos Dados no Streamlit ---
-if current_df_jogos_selecionados is not None:
-    # st.subheader("Dados de Jogos Carregados:")
-    # Exibe o DataFrame completo sem checagem de colunas
-    st.dataframe(current_df_jogos_selecionados, use_container_width=True)
+if current_df_page_specific is not None:
+    st.subheader(f"Dados de '{DB_TABLE_NAME}' Carregados:")
+    st.dataframe(current_df_page_specific, use_container_width=True)
 else:
-    st.warning("Nenhum dado de jogos disponível para exibição. Verifique as mensagens de erro e carregamento acima.")
+    st.warning(f"Nenhum dado da tabela '{DB_TABLE_NAME}' disponível para exibição. Verifique as mensagens de erro e carregamento acima.")
 
 # --- Seção do Contador Decrescente ---
 st.markdown("---") # Separador visual simples
-st.subheader("📊 Status da Sessão de Dados") # Título mais genérico
+st.subheader("📊 Status da Sessão de Dados para esta Página") # Título mais específico
 
-if st.session_state["last_loaded"] > 0 and current_df_jogos_selecionados is not None:
+if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_df_page_specific is not None:
     # Calcula quando o cache irá expirar (Unix timestamp)
-    last_loaded_timestamp = st.session_state["last_loaded"]
+    last_loaded_timestamp = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
     expiration_timestamp = last_loaded_timestamp + CACHE_DURATION_SECONDS
 
     # Calcula o tempo restante
@@ -188,28 +192,31 @@ if st.session_state["last_loaded"] > 0 and current_df_jogos_selecionados is not 
         seconds = int(remaining_seconds % 60)
         
         # Exibe o tempo restante usando st.metric para um visual agradável
-        st.metric(label=f"Próxima atualização automática em aproximadamente", value=f"{minutes:02d}m {seconds:02d}s")
+        st.metric(label=f"Próxima atualização automática da tabela '{DB_TABLE_NAME}' em aproximadamente", value=f"{minutes:02d}m {seconds:02}s")
         st.caption(
-            f"Os dados foram carregados pela última vez em: "
+            f"Os dados da tabela '{DB_TABLE_NAME}' foram carregados pela última vez em: "
             f"**{datetime.datetime.fromtimestamp(last_loaded_timestamp).strftime('%d/%m/%Y %H:%M:%S')}**."
             f" O contador atualiza a cada interação ou recarregamento da página."
         )
     else:
-        st.warning("O cache dos dados expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.")
+        st.warning(f"O cache dos dados da tabela '{DB_TABLE_NAME}' expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.")
 else:
-    st.info("O contador do cache será iniciado após o primeiro carregamento bem-sucedido dos dados.")
+    st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button("Forçar Recarregamento dos Dados (Limpar Cache) 🔄"):
-    st.info("Forçando a limpeza do cache de dados e recarregamento...")
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
+    st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
-    # Limpa as entradas de dados do cache
-    if 'data_jogos_selecionados' in st.session_state:
-        del st.session_state['data_jogos_selecionados']
-    if 'last_loaded' in st.session_state:
-        del st.session_state['last_loaded']
+    # Limpa as entradas de dados do cache específicas desta página
+    if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
+        del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"]
+    if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" in st.session_state:
+        del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
         
-    # Tenta limpar o diretório temporário do certificado
-    if st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
+    # Limpeza do certificado permanece como antes, pois é um recurso mais global.
+    # Se você quiser que cada página gerencie seu próprio certificado completamente isolado,
+    # você precisaria prefixar 'cert_path' e 'cert_temp_dir' também e talvez até refatorar
+    # a função download_and_store_certificate para ser mais page-specific.
+    if 'cert_temp_dir' in st.session_state and st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
         try:
             shutil.rmtree(st.session_state.cert_temp_dir)
             st.info(f"Diretório temporário do certificado '{st.session_state.cert_temp_dir}' limpo.")
