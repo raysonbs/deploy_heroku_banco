@@ -22,17 +22,23 @@ DB_TABLE_NAME = 'temporadas_todos_jogos'
 # Prefixo para as chaves do session_state desta página, para evitar conflitos
 PAGE_SESSION_STATE_PREFIX = f"{DB_TABLE_NAME}_"
 
-# --- Inicialização das Variáveis de Estado da Sessão para mensagens temporárias ---
-if f"{PAGE_SESSION_STATE_PREFIX}temp_message_display" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"] = False
-if f"{PAGE_SESSION_STATE_PREFIX}temp_message_text" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"] = ""
-if f"{PAGE_SESSION_STATE_PREFIX}temp_message_type" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_type"] = "info" # default type
-if f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp"] = 0
+# --- INICIALIZAÇÃO DE TODAS AS VARIÁVEIS DE ESTADO DA SESSÃO ---
+# Garante que todas as chaves estejam presentes desde o início do script.
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}last_loaded", 0)
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}data", None)
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_display", False)
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_text", "")
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_type", "info") # default type
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp", 0)
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_start_date", datetime.date.today()) # Valor temporário, será ajustado
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_end_date", datetime.date.today())   # Valor temporário, será ajustado
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_home_teams", ["Todos"])
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_away_teams", ["Todos"])
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_liga", ["Todos"])
 
-# Helper function to set temporary messages
+
+# --- Helper function to set temporary messages ---
+# Define-a AGORA, depois que o session_state está garantido.
 def set_temp_message(text, type="info"):
     st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"] = True
     st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"] = text
@@ -58,7 +64,6 @@ def download_and_store_certificate():
         url = os.getenv('url') 
 
         if not url:
-            # st.sidebar.error replaced with st.error (permanente, não temporário, pois é um erro crítico)
             st.error("A variável de ambiente 'url' (para o certificado) não está definida.")
             return None
 
@@ -131,9 +136,6 @@ def load_data():
         with engine.connect() as connection:
             df = pd.read_sql_table(DB_TABLE_NAME, con=connection)
         
-        # Este st.success foi substituído pela lógica de mensagem temporária abaixo.
-        # Ele não será chamado aqui, mas a mensagem de "Dados carregados..." será definida
-        # após o processamento do DataFrame, mais abaixo.
         return df
     
     except Exception as e:
@@ -261,33 +263,21 @@ if current_df_page_specific is not None:
         if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all()
         else datetime.date.today()
     )
-    default_home_teams = ["Todos"]
-    default_away_teams = ["Todos"]
-    default_liga = ["Todos"]
-
-
-    # Inicializa as chaves do session_state que armazenarão os valores ATUAIS dos filtros
-    if f"{PAGE_SESSION_STATE_PREFIX}current_start_date" not in st.session_state:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
-    if f"{PAGE_SESSION_STATE_PREFIX}current_end_date" not in st.session_state:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
-    if f"{PAGE_SESSION_STATE_PREFIX}current_home_teams" not in st.session_state:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
-    if f"{PAGE_SESSION_STATE_PREFIX}current_away_teams" not in st.session_state:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
-    if f"{PAGE_SESSION_STATE_PREFIX}current_liga" not in st.session_state:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] = default_liga
-
+    # Estas chaves já foram inicializadas com setdefault no topo do script,
+    # então aqui estamos apenas definindo os valores padrão para os widgets,
+    # caso os valores no session_state ainda sejam os temporários.
+    # A lógica de st.session_state.setdefault no topo já garante a existência.
+    
     def reset_filters():
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] = default_liga
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = ["Todos"] # Resetar para o padrão
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = ["Todos"] # Resetar para o padrão
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] = ["Todos"]       # Resetar para o padrão
         st.rerun() 
 
     # Botão de Resetar Filtros na barra lateral
-    st.sidebar.button("Resetar Filtros 🔄", on_click=reset_filters)
+    st.sidebar.button("Resetar Filtros ��", on_click=reset_filters)
 
     st.sidebar.subheader("Configurações de Filtro")
 
@@ -316,6 +306,7 @@ if current_df_page_specific is not None:
                 key=f"{PAGE_SESSION_STATE_PREFIX}date_input_end"
             )
         
+        # Atualiza o session_state com os valores selecionados pelo usuário
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = selected_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = selected_end_date
 
@@ -426,7 +417,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
