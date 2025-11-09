@@ -32,40 +32,36 @@ def download_and_store_certificate():
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
-        st.info("Baixando certificado SSL...")
-        # Usando 'url' como a variável de ambiente para a URL do certificado, conforme o cenário.
+        st.sidebar.info("Baixando certificado SSL...") # Movi para a sidebar
         url = os.getenv('url') 
 
         if not url:
-            st.error("A variável de ambiente 'url' (para o certificado) não está definida.")
+            st.sidebar.error("A variável de ambiente 'url' (para o certificado) não está definida.") # Movi para a sidebar
             return None
 
         try:
-            response = requests.get(url, timeout=10) # Adiciona um timeout para a requisição
-            response.raise_for_status() # Verifica se a requisição foi bem-sucedida
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
 
-            # Cria um diretório temporário para armazenar o certificado
             temp_dir = tempfile.mkdtemp()
             cert_file_name = "certificado.crt"
             cert_full_path = os.path.join(temp_dir, cert_file_name)
 
-            # Salva o conteúdo do certificado no arquivo temporário
             with open(cert_full_path, 'wb') as cert_file:
                 cert_file.write(response.content)
             
             st.session_state.cert_path = cert_full_path
-            st.session_state.cert_temp_dir = temp_dir # Armazena o diretório temporário para possível limpeza
-            st.success("Certificado baixado e armazenado com sucesso!")
+            st.session_state.cert_temp_dir = temp_dir
+            st.sidebar.success("Certificado baixado e armazenado com sucesso!") # Movi para a sidebar
             return cert_full_path
 
         except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.")
+            st.sidebar.error(f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.") # Movi para a sidebar
             return None
         except Exception as e:
-            st.error(f"Erro inesperado no download do certificado: {e}")
+            st.sidebar.error(f"Erro inesperado no download do certificado: {e}") # Movi para a sidebar
             return None
     else:
-        # Certificado já foi baixado e seu caminho está no session_state
         return st.session_state.cert_path
 
 # --- Função de Carregamento de Dados do Banco ---
@@ -75,33 +71,27 @@ def load_data():
     da tabela especificada por DB_TABLE_NAME.
     Retorna um DataFrame pandas ou None em caso de erro.
     """
-    # Garante que o certificado seja baixado e seu caminho seja obtido
     cert_path_for_db = download_and_store_certificate()
     if cert_path_for_db is None:
         st.error("Não foi possível obter o certificado SSL necessário para a conexão com o banco de dados.")
         return None
 
-    # Informações de conexão (obtidas de variáveis de ambiente)    
-    # Corrigido para usar os nomes de variáveis de ambiente originais, conforme o cenário.
     username = os.getenv('username')
     password = os.getenv('password')
     host = os.getenv('host')
     port = os.getenv('port')
     database = os.getenv('database')
 
-    # Verifica se todas as variáveis de ambiente necessárias estão definidas
     if not all([username, password, host, port, database]):
         st.error("Variáveis de ambiente para conexão com o banco de dados incompletas (username, password, host, port, database).")
         return None
     
-    # Converte a porta para inteiro
     try:
         port = int(port)
     except (ValueError, TypeError):
         st.error(f"A porta do banco de dados '{port}' não é um número válido.")
         return None
 
-    # Configurações SSL para SQLAlchemy
     ssl_args = {
         'ssl': {
             'ca': cert_path_for_db
@@ -109,13 +99,11 @@ def load_data():
     }
     
     try:
-        # Cria a engine de conexão com o banco de dados
         engine = create_engine(
             f'mysql+pymysql://{username}:{password}@{host}:{port}/{database}',
             connect_args=ssl_args
         )
         
-        # Carrega os dados da tabela para um DataFrame (alterado para DB_TABLE_NAME)
         with engine.connect() as connection:
             df = pd.read_sql_table(DB_TABLE_NAME, con=connection)
         
@@ -133,15 +121,13 @@ st.write(f"Dados da tabela `{DB_TABLE_NAME}` com cache de sessão por **{API_REF
 
 # --- Inicialização das Variáveis de Estado da Sessão (com prefixo) ---
 if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = 0  # Timestamp da última carga de dados (Unix timestamp)
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = 0
 if f"{PAGE_SESSION_STATE_PREFIX}data" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = None # DataFrame principal (para esta página)
-# As chaves 'cert_path' e 'cert_temp_dir' são mantidas sem prefixo.
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = None
 
 # --- Lógica de Caching de Dados (usando chaves prefixadas) ---
-current_df_page_specific = None # Esta variável local irá segurar o DataFrame para o rerun atual
+current_df_page_specific = None
 
-# Verifica se os dados precisam ser carregados/recarregados
 cache_expired = (time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]) > CACHE_DURATION_SECONDS
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired:
@@ -151,35 +137,28 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
     elif cache_expired:
         st.warning(f"Cache de dados para '{DB_TABLE_NAME}' expirado (última carga há {int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])} segundos). Recarregando dados...")
     
-    # Tenta carregar os dados. load_data() já lida com o certificado.
     temp_df = load_data() 
     
     if temp_df is not None:
-        # CONVERSÃO PARA DATA AQUI: Garante que 'data_sem_fuso' seja tipo date para filtros
         if 'data_sem_fuso' in temp_df.columns:
             temp_df['data_sem_fuso'] = pd.to_datetime(temp_df['data_sem_fuso'], errors='coerce').dt.date
-            # Remover linhas com datas inválidas (NaT) se desejar, ou deixá-las para serem ignoradas no filtro
-            # temp_df.dropna(subset=['data_sem_fuso'], inplace=True)
             
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = temp_df
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time() # Atualiza o timestamp na carga bem-sucedida
-        current_df_page_specific = temp_df # Atribui ao local para este rerun
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time()
+        current_df_page_specific = temp_df
         st.success(f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão.")
     else:
         st.error(f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
-        current_df_page_specific = None # Garante que o local seja None se a carga falhou
+        current_df_page_specific = None
 else:
-    # Os dados já estão no session_state e não expiraram
     time_since_last_load = int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])
     st.info(f"Usando dados em cache da sessão para '{DB_TABLE_NAME}' (última carga há {time_since_last_load} segundos).")
-    current_df_page_specific = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] # Atribui do cache ao local
+    current_df_page_specific = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"]
 
-# --- Aplicação de Filtros e Exibição dos Dados no Streamlit ---
+# --- Aplicação de Filtros (na barra lateral) e Exibição dos Dados no Streamlit ---
 if current_df_page_specific is not None:
-    st.subheader("Configurações de Filtro")
+    st.sidebar.subheader("Configurações de Filtro") # Título do filtro na sidebar
 
-    # Criar uma cópia do DataFrame para aplicar os filtros
-    # Isso evita modificar o DataFrame original no session_state diretamente
     filtered_df = current_df_page_specific.copy()
 
     # --- Filtro de Data ---
@@ -187,25 +166,24 @@ if current_df_page_specific is not None:
         min_available_date = filtered_df['data_sem_fuso'].min()
         max_available_date = filtered_df['data_sem_fuso'].max()
 
-        col_date1, col_date2 = st.columns(2)
+        # Usar st.sidebar.columns para alinhar as datas na sidebar
+        col_date1, col_date2 = st.sidebar.columns(2)
         with col_date1:
-            start_date_filter = st.date_input(
+            start_date_filter = st.sidebar.date_input( # Alterado para st.sidebar.date_input
                 "Data Inicial",
-                value=min_available_date if pd.notna(min_available_date) else datetime.date.today(), # Valor padrão
-                min_value=min_available_date if pd.notna(min_available_date) else datetime.date(1900, 1, 1), # Min date do seletor
-                max_value=max_available_date if pd.notna(max_available_date) else datetime.date.today()  # Max date do seletor
+                value=min_available_date if pd.notna(min_available_date) else datetime.date.today(),
+                min_value=min_available_date if pd.notna(min_available_date) else datetime.date(1900, 1, 1),
+                max_value=max_available_date if pd.notna(max_available_date) else datetime.date.today()
             )
         with col_date2:
-            end_date_filter = st.date_input(
+            end_date_filter = st.sidebar.date_input( # Alterado para st.sidebar.date_input
                 "Data Final",
-                value=max_available_date if pd.notna(max_available_date) else datetime.date.today(), # Valor padrão
+                value=max_available_date if pd.notna(max_available_date) else datetime.date.today(),
                 min_value=min_available_date if pd.notna(min_available_date) else datetime.date(1900, 1, 1),
                 max_value=max_available_date if pd.notna(max_available_date) else datetime.date.today()
             )
         
-        # Aplicar filtro de data
         if start_date_filter and end_date_filter:
-            # Garante que as datas de filtro são do tipo date para comparação consistente
             start_date_filter = pd.to_datetime(start_date_filter).date()
             end_date_filter = pd.to_datetime(end_date_filter).date()
             
@@ -214,47 +192,43 @@ if current_df_page_specific is not None:
                 (filtered_df['data_sem_fuso'] <= end_date_filter)
             ]
     else:
-        st.warning("Coluna 'data_sem_fuso' não encontrada ou não contém datas válidas para filtrar.")
+        st.sidebar.warning("Coluna 'data_sem_fuso' não encontrada ou não contém datas válidas para filtrar.") # Movi para a sidebar
 
 
     # --- Filtro de Times (home_name) ---
     if 'home_name' in filtered_df.columns:
-        # Garante que apenas valores únicos e não nulos são usados para as opções
         all_home_teams = sorted(current_df_page_specific['home_name'].dropna().unique().tolist())
         home_teams_options = ["Todos"] + all_home_teams
-        selected_home_teams = st.multiselect(
+        selected_home_teams = st.sidebar.multiselect( # Alterado para st.sidebar.multiselect
             "Time da Casa",
             options=home_teams_options,
-            default=["Todos"] # Por padrão, "Todos" selecionado
+            default=["Todos"]
         )
         
-        # Aplicar filtro de time da casa, a menos que "Todos" esteja selecionado (e seja a única seleção, ou se "Todos" não estiver presente, filtra pelos selecionados)
         if "Todos" not in selected_home_teams and selected_home_teams:
             filtered_df = filtered_df[filtered_df['home_name'].isin(selected_home_teams)]
-        elif not selected_home_teams: # Se nada for selecionado e "Todos" não estiver lá, mostrar nada
-            filtered_df = filtered_df[filtered_df['home_name'].isin([])] # Filtra para DataFrame vazio
+        elif not selected_home_teams:
+            filtered_df = filtered_df[filtered_df['home_name'].isin([])]
     else:
-        st.warning("Coluna 'home_name' não encontrada para filtrar.")
+        st.sidebar.warning("Coluna 'home_name' não encontrada para filtrar.") # Movi para a sidebar
 
 
     # --- Filtro de Times (away_name) ---
     if 'away_name' in filtered_df.columns:
-        # Garante que apenas valores únicos e não nulos são usados para as opções
         all_away_teams = sorted(current_df_page_specific['away_name'].dropna().unique().tolist())
         away_teams_options = ["Todos"] + all_away_teams
-        selected_away_teams = st.multiselect(
+        selected_away_teams = st.sidebar.multiselect( # Alterado para st.sidebar.multiselect
             "Time Visitante",
             options=away_teams_options,
-            default=["Todos"] # Por padrão, "Todos" selecionado
+            default=["Todos"]
         )
         
-        # Aplicar filtro de time visitante, a menos que "Todos" esteja selecionado
         if "Todos" not in selected_away_teams and selected_away_teams:
             filtered_df = filtered_df[filtered_df['away_name'].isin(selected_away_teams)]
-        elif not selected_away_teams: # Se nada for selecionado e "Todos" não estiver lá, mostrar nada
-            filtered_df = filtered_df[filtered_df['away_name'].isin([])] # Filtra para DataFrame vazio
+        elif not selected_away_teams:
+            filtered_df = filtered_df[filtered_df['away_name'].isin([])]
     else:
-        st.warning("Coluna 'away_name' não encontrada para filtrar.")
+        st.sidebar.warning("Coluna 'away_name' não encontrada para filtrar.") # Movi para a sidebar
 
     st.subheader(f"Dados Filtrados da Tabela '{DB_TABLE_NAME}':")
     if not filtered_df.empty:
@@ -266,25 +240,21 @@ else:
     st.warning(f"Nenhum dado da tabela '{DB_TABLE_NAME}' disponível para exibição. Verifique as mensagens de erro e carregamento acima.")
 
 
-# --- Seção do Contador Decrescente ---
-st.markdown("---") # Separador visual simples
-st.subheader("📊 Status da Sessão de Dados para esta Página") # Título mais específico
+# --- Seção do Contador Decrescente (no rodapé da página principal) ---
+st.markdown("---")
+st.subheader("📊 Status da Sessão de Dados para esta Página")
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_df_page_specific is not None:
-    # Calcula quando o cache irá expirar (Unix timestamp)
     last_loaded_timestamp = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
     expiration_timestamp = last_loaded_timestamp + CACHE_DURATION_SECONDS
 
-    # Calcula o tempo restante
     current_time = time.time()
     remaining_seconds = expiration_timestamp - current_time
 
     if remaining_seconds > 0:
-        # Converte segundos para minutos e segundos para exibição
         minutes = int(remaining_seconds // 60)
         seconds = int(remaining_seconds % 60)
         
-        # Exibe o tempo restante usando st.metric para um visual agradável
         st.metric(label=f"Próxima atualização automática da tabela '{DB_TABLE_NAME}' em aproximadamente", value=f"{minutes:02d}m {seconds:02}s")
         st.caption(
             f"Os dados da tabela '{DB_TABLE_NAME}' foram carregados pela última vez em: "
@@ -296,16 +266,14 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
-    # Limpa as entradas de dados do cache específicas desta página
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"]
     if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" in st.session_state:
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
         
-    # Limpeza do certificado permanece como antes, pois é um recurso mais global.
     if 'cert_temp_dir' in st.session_state and st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
         try:
             shutil.rmtree(st.session_state.cert_temp_dir)
@@ -315,4 +283,4 @@ if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Lim
         st.session_state.cert_path = None
         st.session_state.cert_temp_dir = None
         
-    st.rerun() # Dispara um rerun para que a lógica de carregamento seja reavaliada imediatamente
+    st.rerun()
