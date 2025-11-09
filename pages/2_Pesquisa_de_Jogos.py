@@ -13,14 +13,31 @@ import datetime
 API_REFRESH_INTERVAL_MINUTES = 20
 CACHE_DURATION_SECONDS = API_REFRESH_INTERVAL_MINUTES * 60
 
-# Define a duração da mensagem de sucesso temporária em segundos
-SUCCESS_MESSAGE_DURATION_SECONDS = 10 
+# Define a duração das mensagens temporárias em segundos
+TEMP_MESSAGE_DURATION_SECONDS = 10 
 
 # --- Configurações Específicas da Página ---
 # Nome da tabela do banco de dados para esta página
 DB_TABLE_NAME = 'temporadas_todos_jogos'
 # Prefixo para as chaves do session_state desta página, para evitar conflitos
 PAGE_SESSION_STATE_PREFIX = f"{DB_TABLE_NAME}_"
+
+# --- Inicialização das Variáveis de Estado da Sessão para mensagens temporárias ---
+if f"{PAGE_SESSION_STATE_PREFIX}temp_message_display" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"] = False
+if f"{PAGE_SESSION_STATE_PREFIX}temp_message_text" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"] = ""
+if f"{PAGE_SESSION_STATE_PREFIX}temp_message_type" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_type"] = "info" # default type
+if f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp"] = 0
+
+# Helper function to set temporary messages
+def set_temp_message(text, type="info"):
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"] = True
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"] = text
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_type"] = type
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp"] = time.time()
 
 # --- Gerenciamento do Certificado SSL ---
 def download_and_store_certificate():
@@ -31,14 +48,18 @@ def download_and_store_certificate():
     assumindo que o certificado é um recurso compartilhado para conexão
     ao banco de dados em todo o aplicativo.
     """
+    # Check if a certificate download is already in progress or completed and valid
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
-        st.sidebar.info("Baixando certificado SSL...")
+        # Display temporary info message in the main area
+        set_temp_message("Baixando certificado SSL...", "info") # MOVIDO DA BARRA LATERAL
+
         url = os.getenv('url') 
 
         if not url:
-            st.sidebar.error("A variável de ambiente 'url' (para o certificado) não está definida.")
+            # st.sidebar.error replaced with st.error (permanente, não temporário, pois é um erro crítico)
+            st.error("A variável de ambiente 'url' (para o certificado) não está definida.")
             return None
 
         try:
@@ -54,14 +75,15 @@ def download_and_store_certificate():
             
             st.session_state.cert_path = cert_full_path
             st.session_state.cert_temp_dir = temp_dir
-            st.sidebar.success("Certificado baixado e armazenado com sucesso!")
+            # Display temporary success message in the main area
+            set_temp_message("Certificado baixado e armazenado com sucesso!", "success") # MOVIDO DA BARRA LATERAL
             return cert_full_path
 
         except requests.exceptions.RequestException as e:
-            st.sidebar.error(f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.")
+            st.error(f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.")
             return None
         except Exception as e:
-            st.sidebar.error(f"Erro inesperado no download do certificado: {e}")
+            st.error(f"Erro inesperado no download do certificado: {e}")
             return None
     else:
         return st.session_state.cert_path
@@ -109,7 +131,9 @@ def load_data():
         with engine.connect() as connection:
             df = pd.read_sql_table(DB_TABLE_NAME, con=connection)
         
-        st.success(f"Dados carregados da tabela '{DB_TABLE_NAME}' com sucesso!") # Mantido, pois é sobre a conexão inicial
+        # Este st.success foi substituído pela lógica de mensagem temporária abaixo.
+        # Ele não será chamado aqui, mas a mensagem de "Dados carregados..." será definida
+        # após o processamento do DataFrame, mais abaixo.
         return df
     
     except Exception as e:
@@ -121,32 +145,31 @@ st.set_page_config(layout="wide")
 st.title(f"Todos os Jogos: {DB_TABLE_NAME.replace('_', ' ')} ⚽")
 st.write(f"Dados da tabela `{DB_TABLE_NAME}` com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
-# --- Inicialização das Variáveis de Estado da Sessão (com prefixo) ---
-if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = 0
-if f"{PAGE_SESSION_STATE_PREFIX}data" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = None
-
-# Novas chaves para a mensagem de sucesso temporária
-if f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = False
-if f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = ""
-if f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp" not in st.session_state:
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp"] = 0
-
-# --- Placeholder para a mensagem de sucesso temporária ---
+# --- Placeholder para a mensagem temporária geral ---
 # Criado antes da lógica principal para garantir que esteja sempre disponível.
-temp_success_message_placeholder = st.empty()
+temp_message_placeholder = st.empty()
 
-# Lógica para fazer a mensagem de sucesso temporária desaparecer
-if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"]:
-    if time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp"] < SUCCESS_MESSAGE_DURATION_SECONDS:
-        temp_success_message_placeholder.success(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"])
+# Lógica para fazer a mensagem temporária desaparecer
+if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"]:
+    if time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp"] < TEMP_MESSAGE_DURATION_SECONDS:
+        message_type = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_type"]
+        message_text = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"]
+        
+        if message_type == "success":
+            temp_message_placeholder.success(message_text)
+        elif message_type == "info":
+            temp_message_placeholder.info(message_text)
+        elif message_type == "warning":
+            temp_message_placeholder.warning(message_text)
+        elif message_type == "error":
+            temp_message_placeholder.error(message_text)
+        else: # Fallback para caso 'type' seja inválido
+            temp_message_placeholder.write(message_text)
     else:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = False
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = ""
-        temp_success_message_placeholder.empty() # Limpa o placeholder
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"] = False
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"] = ""
+        temp_message_placeholder.empty() # Limpa o placeholder
+
 
 # --- Lógica de Caching de Dados (usando chaves prefixadas) ---
 current_df_page_specific = None
@@ -155,16 +178,18 @@ cache_expired = (time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}las
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired:
     # Ao iniciar ou recarregar dados, assegure que qualquer mensagem temporária anterior seja limpa
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = False
-    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = ""
-    temp_success_message_placeholder.empty()
+    # Isso é redundante com a lógica do placeholder acima, mas garante o estado limpo.
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_display"] = False
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_message_text"] = ""
+    temp_message_placeholder.empty()
 
     if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None:
-        st.info(f"Primeiro carregamento dos dados da sessão para '{DB_TABLE_NAME}' ou dados não encontrados no cache.")
+        # st.info substituído por set_temp_message
+        set_temp_message(f"Primeiro carregamento dos dados da sessão para '{DB_TABLE_NAME}' ou dados não encontrados no cache.", "info")
     elif cache_expired:
         st.warning(f"Cache de dados para '{DB_TABLE_NAME}' expirado (última carga há {int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])} segundos). Recarregando dados...")
     
-    temp_df = load_data() 
+    temp_df = load_data() # Esta função internamente chama download_and_store_certificate, que já seta mensagens temporárias
     
     if temp_df is not None:
         # Definir o mapeamento de colunas original para novo nome
@@ -201,7 +226,8 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         if 'data_jogo' in temp_df.columns:
             try:
                 temp_df['data_jogo'] = pd.to_datetime(temp_df['data_jogo'], errors='coerce').dt.date
-                # st.success("Conversão da coluna 'data_jogo' bem-sucedida.") # Removido, a mensagem principal é a de cache
+                # st.success substituído por set_temp_message
+                set_temp_message(f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão.", "success")
             except Exception as e:
                 st.error(f"Erro na conversão da coluna 'data_jogo': {e}")
                 st.text("Exemplo de valores na coluna 'data_jogo' que causaram o erro:")
@@ -214,11 +240,6 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time()
         current_df_page_specific = temp_df
         
-        # Define a mensagem de sucesso para ser exibida e desaparecer
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = True
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão."
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp"] = time.time()
-
     else:
         st.error(f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
         current_df_page_specific = None
