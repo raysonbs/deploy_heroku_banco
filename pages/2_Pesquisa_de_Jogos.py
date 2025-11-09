@@ -28,7 +28,6 @@ def download_and_store_certificate():
     assumindo que o certificado é um recurso compartilhado para conexão
     ao banco de dados em todo o aplicativo.
     """
-    # Verifica se o certificado já está no session_state e se o arquivo ainda existe
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
@@ -140,44 +139,31 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
     temp_df = load_data() 
     
     if temp_df is not None:
-        # ATENÇÃO: Renomeia as colunas ANTES de qualquer outra operação com elas
-        # Isso garante que as colunas 'data_sem_fuso', 'home_name', etc.
-        # já terão os novos nomes 'data', 'home', etc. para as próximas operações.
-        colunas_originais_para_renomear = ['liga_nome','data_sem_fuso','home_name','away_name','homeGoalCount','awayGoalCount',
-                                           'odds_ft_1','odds_ft_2','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A']
-        colunas_novas_correspondentes = ['liga','data','home','away','gols_h','gols_a',
-                                        'odds_h','odds_a','M_Gols_F_H','M_Gols_F_A','CV_G_F_H','CV_G_F_A']
+        colunas_originais_para_renomear = [
+            'liga_nome', 'data_sem_fuso', 'home_name', 'away_name',
+            'homeGoalCount', 'awayGoalCount', 'odds_ft_1', 'odds_ft_2',
+            'Media_Gols_F_H', 'Media_Gols_F_A', 'CV_Gols_F_H', 'CV_Gols_F_A'
+        ]
+        colunas_novas_correspondentes = [
+            'liga', 'data', 'home', 'away',
+            'gols_h', 'gols_a', 'odds_h', 'odds_a',
+            'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A'
+        ]
         
-        rename_map = {old: new for old, new in zip(colunas_originais_para_renomear, colunas_novas_correspondentes) if old in temp_df.columns}
+        rename_map = {
+            old: new for old, new in zip(colunas_originais_para_renomear, colunas_novas_correspondentes)
+            if old in temp_df.columns # Apenas para colunas que realmente existem no df
+        }
         
-        # Filtra as colunas do DataFrame para conter apenas aquelas que serão renomeadas e mantidas
-        # Isso evita duplicidade se houver colunas com nomes já existentes no `colunas_novas_correspondentes`
-        # e também garante que apenas as colunas desejadas estão presentes.
+        # 1. Renomeia as colunas do DataFrame
+        temp_df = temp_df.rename(columns=rename_map)
         
-        # Primeiro, renomeie as colunas existentes conforme o mapeamento
-        temp_df_renamed = temp_df.rename(columns=rename_map)
-        
-        # Agora, selecione apenas as colunas que você deseja manter (com seus novos nomes)
-        # E quaisquer outras colunas que não foram renomeadas mas você quer manter
-        
-        # Crie uma lista com todos os nomes de colunas que você quer que o DataFrame final tenha
-        # priorizando os novos nomes e incluindo outras colunas que não estão na lista de renomeio
-        final_columns = []
-        for col_orig, col_new in zip(colunas_originais_para_renomear, colunas_novas_correspondentes):
-            if col_orig in temp_df.columns: # Se a coluna original existe
-                final_columns.append(col_new) # Adicione o novo nome
-            elif col_new in temp_df_renamed.columns: # Se já existe com o novo nome (e não veio do rename)
-                final_columns.append(col_new)
-
-        # Adiciona colunas que não foram renomeadas mas podem existir no df original e você quer manter
-        # para evitar perda de dados se o `colunas_originais_para_renomear` não for exaustivo
-        for col in temp_df_renamed.columns:
-            if col not in final_columns and col not in colunas_originais_para_renomear:
-                 final_columns.append(col)
-
-        # Filtra o DataFrame para conter apenas as colunas finais desejadas, mantendo a ordem
-        temp_df = temp_df_renamed[final_columns]
-        
+        # 2. Seleciona APENAS as colunas que estão na lista 'colunas_novas_correspondentes'
+        #    e que realmente existem no DataFrame após o renomeamento.
+        #    Isso garante a ordem e remove quaisquer outras colunas e elimina duplicatas.
+        columns_to_keep = [col for col in colunas_novas_correspondentes if col in temp_df.columns]
+        temp_df = temp_df[columns_to_keep]
+            
         # Agora, a conversão de data usa o novo nome da coluna 'data'
         if 'data' in temp_df.columns:
             temp_df['data'] = pd.to_datetime(temp_df['data'], errors='coerce').dt.date
@@ -238,8 +224,8 @@ if current_df_page_specific is not None:
     st.sidebar.subheader("Configurações de Filtro")
 
     # ATENÇÃO: current_df_page_specific JÁ ESTÁ COM AS COLUNAS RENOMEADAS E FILTRADAS
-    # Não precisa mais do bloco abaixo que causava o erro.
-    filtered_df = current_df_page_specific.copy() # Cria uma cópia do DF já renomeado.
+    # Não é necessário renomear ou filtrar colunas novamente aqui.
+    filtered_df = current_df_page_specific.copy() 
 
     # --- Filtro de Data ---
     if 'data' in filtered_df.columns and not filtered_df['data'].isnull().all():
