@@ -140,8 +140,21 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
     temp_df = load_data() 
     
     if temp_df is not None:
-        if 'data_sem_fuso' in temp_df.columns:
-            temp_df['data_sem_fuso'] = pd.to_datetime(temp_df['data_sem_fuso'], errors='coerce').dt.date
+        # ATENÇÃO: Renomeia as colunas antes de fazer qualquer outra operação com elas
+        # Isso garante que as colunas 'data_sem_fuso', 'home_name', etc.
+        # já terão os novos nomes 'data', 'home', etc. para as próximas operações.
+        colunas_originais = ['liga_nome','data_sem_fuso','home_name','away_name','homeGoalCount','awayGoalCount',
+                             'odds_ft_1','odds_ft_2','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A']
+        colunas_novas = ['liga','data','home','away','gols_h','gols_a',
+                         'odds_h','odds_a','M_Gols_F_H','M_Gols_F_A','CV_G_F_H','CV_G_F_A']
+        
+        # Cria um mapeamento para renomear apenas as colunas que você listou
+        rename_map = {old: new for old, new in zip(colunas_originais, colunas_novas) if old in temp_df.columns}
+        temp_df = temp_df.rename(columns=rename_map)
+
+        # Agora, a conversão de data usa o novo nome da coluna 'data'
+        if 'data' in temp_df.columns:
+            temp_df['data'] = pd.to_datetime(temp_df['data'], errors='coerce').dt.date
             
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = temp_df
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time()
@@ -158,25 +171,24 @@ else:
 # --- Lógica para o botão Resetar Filtros ---
 if current_df_page_specific is not None:
     # Definir valores padrão para os filtros baseados no DataFrame carregado
-    # Esses valores serão usados tanto para inicializar st.session_state
-    # quanto para o reset.
+    # ATENÇÃO: Usando os NOVOS nomes das colunas aqui
     default_start_date = (
-        current_df_page_specific['data_sem_fuso'].min()
-        if 'data_sem_fuso' in current_df_page_specific.columns and not current_df_page_specific['data_sem_fuso'].isnull().all()
+        current_df_page_specific['data'].min()
+        if 'data' in current_df_page_specific.columns and not current_df_page_specific['data'].isnull().all()
         else datetime.date.today()
     )
     default_end_date = (
-        current_df_page_specific['data_sem_fuso'].max()
-        if 'data_sem_fuso' in current_df_page_specific.columns and not current_df_page_specific['data_sem_fuso'].isnull().all()
+        current_df_page_specific['data'].max()
+        if 'data' in current_df_page_specific.columns and not current_df_page_specific['data'].isnull().all()
         else datetime.date.today()
     )
     default_home_teams = ["Todos"]
     default_away_teams = ["Todos"]
-    # NOVO: Valor padrão para liga_nome
-    default_liga_nome = ["Todos"]
+    default_liga = ["Todos"] # NOVO NOME DA COLUNA
 
 
     # Inicializa as chaves do session_state que armazenarão os valores ATUAIS dos filtros
+    # ATENÇÃO: As chaves do session_state usam os prefixos e novos nomes de filtros
     if f"{PAGE_SESSION_STATE_PREFIX}current_start_date" not in st.session_state:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
     if f"{PAGE_SESSION_STATE_PREFIX}current_end_date" not in st.session_state:
@@ -185,32 +197,29 @@ if current_df_page_specific is not None:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
     if f"{PAGE_SESSION_STATE_PREFIX}current_away_teams" not in st.session_state:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
-    # NOVO: Inicializa a chave para liga_nome
-    if f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome" not in st.session_state:
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] = default_liga_nome
+    if f"{PAGE_SESSION_STATE_PREFIX}current_liga" not in st.session_state: # NOVO: chave para liga
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] = default_liga
 
     def reset_filters():
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
-        # NOVO: Reseta o filtro de liga_nome
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] = default_liga_nome
-        st.rerun() # Força a página a recarregar e usar os valores padrão
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] = default_liga # NOVO: reseta liga
+        st.rerun() 
 
     # Botão de Resetar Filtros na barra lateral
     st.sidebar.button("Resetar Filtros 🔄", on_click=reset_filters)
 
     st.sidebar.subheader("Configurações de Filtro")
 
-    filtered_df = current_df_page_specific.copy()
-    filtered_df = filtered_df[['liga_nome','data_sem_fuso','home_name','away_name','homeGoalCount','awayGoalCount',
-                             'odds_ft_1','odds_ft_2','Media_Gols_F_H','Media_Gols_F_A','CV_Gols_F_H','CV_Gols_F_A']]
+    filtered_df = current_df_page_specific.copy() # Copia o DataFrame já com os nomes novos
 
     # --- Filtro de Data ---
-    if 'data_sem_fuso' in filtered_df.columns and not filtered_df['data_sem_fuso'].isnull().all():
-        min_available_date = filtered_df['data_sem_fuso'].min()
-        max_available_date = filtered_df['data_sem_fuso'].max()
+    # ATENÇÃO: Usando o NOVO nome da coluna 'data'
+    if 'data' in filtered_df.columns and not filtered_df['data'].isnull().all():
+        min_available_date = filtered_df['data'].min()
+        max_available_date = filtered_df['data'].max()
 
         col_date1, col_date2 = st.sidebar.columns(2)
         with col_date1:
@@ -238,39 +247,38 @@ if current_df_page_specific is not None:
             selected_end_date = pd.to_datetime(selected_end_date).date()
             
             filtered_df = filtered_df[
-                (filtered_df['data_sem_fuso'] >= selected_start_date) &
-                (filtered_df['data_sem_fuso'] <= selected_end_date)
+                (filtered_df['data'] >= selected_start_date) & # NOVO: 'data'
+                (filtered_df['data'] <= selected_end_date)   # NOVO: 'data'
             ]
     else:
-        st.sidebar.warning("Coluna 'data_sem_fuso' não encontrada ou não contém datas válidas para filtrar.")
+        st.sidebar.warning("Coluna 'data' não encontrada ou não contém datas válidas para filtrar.") # NOVO: 'data'
 
 
-    # --- Filtro de Ligas (liga_nome) ---
-    if 'liga_nome' in filtered_df.columns:
-        all_liga_names = sorted(current_df_page_specific['liga_nome'].dropna().unique().tolist())
+    # --- Filtro de Ligas (liga) ---
+    # ATENÇÃO: Usando o NOVO nome da coluna 'liga'
+    if 'liga' in filtered_df.columns:
+        all_liga_names = sorted(current_df_page_specific['liga'].dropna().unique().tolist()) # NOVO: 'liga'
         liga_options = ["Todos"] + all_liga_names
-        # Usando o valor do session_state para o multiselect
         selected_liga_names_multiselect = st.sidebar.multiselect(
             "Nome da Liga",
             options=liga_options,
-            default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"],
+            default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"], # NOVO: 'current_liga'
             key=f"{PAGE_SESSION_STATE_PREFIX}multiselect_liga"
         )
-        # Atualiza o session_state com os valores selecionados pelo usuário
-        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] = selected_liga_names_multiselect
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] = selected_liga_names_multiselect # NOVO: 'current_liga'
         
-        # Aplica o filtro usando os valores do session_state
-        if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"]:
-            filtered_df = filtered_df[filtered_df['liga_nome'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"])]
-        elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"]:
-            filtered_df = filtered_df[filtered_df['liga_nome'].isin([])]
+        if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"]: # NOVO: 'current_liga'
+            filtered_df = filtered_df[filtered_df['liga'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"])] # NOVO: 'liga' e 'current_liga'
+        elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga"]: # NOVO: 'current_liga'
+            filtered_df = filtered_df[filtered_df['liga'].isin([])] # NOVO: 'liga'
     else:
-        st.sidebar.warning("Coluna 'liga_nome' não encontrada para filtrar.")
+        st.sidebar.warning("Coluna 'liga' não encontrada para filtrar.") # NOVO: 'liga'
 
 
-    # --- Filtro de Times (home_name) ---
-    if 'home_name' in filtered_df.columns:
-        all_home_teams = sorted(current_df_page_specific['home_name'].dropna().unique().tolist())
+    # --- Filtro de Times (home) ---
+    # ATENÇÃO: Usando o NOVO nome da coluna 'home'
+    if 'home' in filtered_df.columns:
+        all_home_teams = sorted(current_df_page_specific['home'].dropna().unique().tolist()) # NOVO: 'home'
         home_teams_options = ["Todos"] + all_home_teams
         selected_home_teams_multiselect = st.sidebar.multiselect(
             "Time da Casa",
@@ -281,16 +289,17 @@ if current_df_page_specific is not None:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = selected_home_teams_multiselect
         
         if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"]:
-            filtered_df = filtered_df[filtered_df['home_name'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"])]
+            filtered_df = filtered_df[filtered_df['home'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"])] # NOVO: 'home'
         elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"]:
-            filtered_df = filtered_df[filtered_df['home_name'].isin([])]
+            filtered_df = filtered_df[filtered_df['home'].isin([])] # NOVO: 'home'
     else:
-        st.sidebar.warning("Coluna 'home_name' não encontrada para filtrar.")
+        st.sidebar.warning("Coluna 'home' não encontrada para filtrar.") # NOVO: 'home'
 
 
-    # --- Filtro de Times (away_name) ---
-    if 'away_name' in filtered_df.columns:
-        all_away_teams = sorted(current_df_page_specific['away_name'].dropna().unique().tolist())
+    # --- Filtro de Times (away) ---
+    # ATENÇÃO: Usando o NOVO nome da coluna 'away'
+    if 'away' in filtered_df.columns:
+        all_away_teams = sorted(current_df_page_specific['away'].dropna().unique().tolist()) # NOVO: 'away'
         away_teams_options = ["Todos"] + all_away_teams
         selected_away_teams_multiselect = st.sidebar.multiselect(
             "Time Visitante",
@@ -301,11 +310,11 @@ if current_df_page_specific is not None:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = selected_away_teams_multiselect
         
         if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"]:
-            filtered_df = filtered_df[filtered_df['away_name'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"])]
+            filtered_df = filtered_df[filtered_df['away'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"])] # NOVO: 'away'
         elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"]:
-            filtered_df = filtered_df[filtered_df['away_name'].isin([])]
+            filtered_df = filtered_df[filtered_df['away'].isin([])] # NOVO: 'away'
     else:
-        st.sidebar.warning("Coluna 'away_name' não encontrada para filtrar.")
+        st.sidebar.warning("Coluna 'away' não encontrada para filtrar.") # NOVO: 'away'
 
     st.subheader(f"Dados Filtrados da Tabela '{DB_TABLE_NAME}':")
     if not filtered_df.empty:
@@ -343,7 +352,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
