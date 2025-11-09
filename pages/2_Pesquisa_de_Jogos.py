@@ -204,7 +204,8 @@ if current_df_page_specific is not None:
     st.sidebar.subheader("Configurações de Filtro")
 
     filtered_df = current_df_page_specific.copy()
-    filtered_df = filtered_df[['liga_nome','data_sem_fuso','home_name','away_name','homeGoalCount','awayGoalCount']]
+    filtered_df = filtered_df[['liga_nome','data_sem_fuso','home_name','away_name','homeGoalCount','awayGoalCount',
+                             'odds_ft_1','odds_ft_2','Media_Gols_F_H','Media_Gols_F_H','CV_Gols_F_H','CV_Gols_F_A']]
 
     # --- Filtro de Data ---
     if 'data_sem_fuso' in filtered_df.columns and not filtered_df['data_sem_fuso'].isnull().all():
