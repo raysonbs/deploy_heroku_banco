@@ -172,6 +172,9 @@ if current_df_page_specific is not None:
     )
     default_home_teams = ["Todos"]
     default_away_teams = ["Todos"]
+    # NOVO: Valor padrão para liga_nome
+    default_liga_nome = ["Todos"]
+
 
     # Inicializa as chaves do session_state que armazenarão os valores ATUAIS dos filtros
     if f"{PAGE_SESSION_STATE_PREFIX}current_start_date" not in st.session_state:
@@ -182,16 +185,21 @@ if current_df_page_specific is not None:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
     if f"{PAGE_SESSION_STATE_PREFIX}current_away_teams" not in st.session_state:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
+    # NOVO: Inicializa a chave para liga_nome
+    if f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome" not in st.session_state:
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] = default_liga_nome
 
     def reset_filters():
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
+        # NOVO: Reseta o filtro de liga_nome
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] = default_liga_nome
         st.rerun() # Força a página a recarregar e usar os valores padrão
 
     # Botão de Resetar Filtros na barra lateral
-    st.sidebar.button("Resetar Filtros ��", on_click=reset_filters)
+    st.sidebar.button("Resetar Filtros 🔄", on_click=reset_filters)
 
     st.sidebar.subheader("Configurações de Filtro")
 
@@ -199,12 +207,11 @@ if current_df_page_specific is not None:
 
     # --- Filtro de Data ---
     if 'data_sem_fuso' in filtered_df.columns and not filtered_df['data_sem_fuso'].isnull().all():
-        min_available_date = filtered_df['data_sem_fuso'].min() # Data mínima para o seletor
-        max_available_date = filtered_df['data_sem_fuso'].max() # Data máxima para o seletor
+        min_available_date = filtered_df['data_sem_fuso'].min()
+        max_available_date = filtered_df['data_sem_fuso'].max()
 
         col_date1, col_date2 = st.sidebar.columns(2)
         with col_date1:
-            # Usando o valor do session_state para o input
             selected_start_date = st.sidebar.date_input(
                 "Data Inicial",
                 value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"],
@@ -213,7 +220,6 @@ if current_df_page_specific is not None:
                 key=f"{PAGE_SESSION_STATE_PREFIX}date_input_start"
             )
         with col_date2:
-            # Usando o valor do session_state para o input
             selected_end_date = st.sidebar.date_input(
                 "Data Final",
                 value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"],
@@ -222,11 +228,9 @@ if current_df_page_specific is not None:
                 key=f"{PAGE_SESSION_STATE_PREFIX}date_input_end"
             )
         
-        # Atualiza o session_state com os valores selecionados pelo usuário
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = selected_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = selected_end_date
 
-        # Aplica o filtro usando os valores do session_state
         if selected_start_date and selected_end_date:
             selected_start_date = pd.to_datetime(selected_start_date).date()
             selected_end_date = pd.to_datetime(selected_end_date).date()
@@ -239,21 +243,41 @@ if current_df_page_specific is not None:
         st.sidebar.warning("Coluna 'data_sem_fuso' não encontrada ou não contém datas válidas para filtrar.")
 
 
+    # --- Filtro de Ligas (liga_nome) ---
+    if 'liga_nome' in filtered_df.columns:
+        all_liga_names = sorted(current_df_page_specific['liga_nome'].dropna().unique().tolist())
+        liga_options = ["Todos"] + all_liga_names
+        # Usando o valor do session_state para o multiselect
+        selected_liga_names_multiselect = st.sidebar.multiselect(
+            "Nome da Liga",
+            options=liga_options,
+            default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"],
+            key=f"{PAGE_SESSION_STATE_PREFIX}multiselect_liga"
+        )
+        # Atualiza o session_state com os valores selecionados pelo usuário
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] = selected_liga_names_multiselect
+        
+        # Aplica o filtro usando os valores do session_state
+        if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"]:
+            filtered_df = filtered_df[filtered_df['liga_nome'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"])]
+        elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_liga_nome"]:
+            filtered_df = filtered_df[filtered_df['liga_nome'].isin([])]
+    else:
+        st.sidebar.warning("Coluna 'liga_nome' não encontrada para filtrar.")
+
+
     # --- Filtro de Times (home_name) ---
     if 'home_name' in filtered_df.columns:
         all_home_teams = sorted(current_df_page_specific['home_name'].dropna().unique().tolist())
         home_teams_options = ["Todos"] + all_home_teams
-        # Usando o valor do session_state para o multiselect
         selected_home_teams_multiselect = st.sidebar.multiselect(
             "Time da Casa",
             options=home_teams_options,
             default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"],
             key=f"{PAGE_SESSION_STATE_PREFIX}multiselect_home"
         )
-        # Atualiza o session_state com os valores selecionados pelo usuário
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = selected_home_teams_multiselect
         
-        # Aplica o filtro usando os valores do session_state
         if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"]:
             filtered_df = filtered_df[filtered_df['home_name'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"])]
         elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"]:
@@ -266,17 +290,14 @@ if current_df_page_specific is not None:
     if 'away_name' in filtered_df.columns:
         all_away_teams = sorted(current_df_page_specific['away_name'].dropna().unique().tolist())
         away_teams_options = ["Todos"] + all_away_teams
-        # Usando o valor do session_state para o multiselect
         selected_away_teams_multiselect = st.sidebar.multiselect(
             "Time Visitante",
             options=away_teams_options,
             default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"],
             key=f"{PAGE_SESSION_STATE_PREFIX}multiselect_away"
         )
-        # Atualiza o session_state com os valores selecionados pelo usuário
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = selected_away_teams_multiselect
         
-        # Aplica o filtro usando os valores do session_state
         if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"]:
             filtered_df = filtered_df[filtered_df['away_name'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"])]
         elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"]:
@@ -296,7 +317,7 @@ else:
 
 # --- Seção do Contador Decrescente (no rodapé da página principal) ---
 st.markdown("---")
-st.subheader("�� Status da Sessão de Dados para esta Página")
+st.subheader("📊 Status da Sessão de Dados para esta Página")
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_df_page_specific is not None:
     last_loaded_timestamp = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
