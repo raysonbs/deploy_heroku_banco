@@ -145,7 +145,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
             'Media_Gols_F_H', 'Media_Gols_F_A', 'CV_Gols_F_H', 'CV_Gols_F_A'
         ]
         colunas_novas_correspondentes = [
-            'liga', 'data', 'home', 'away',
+            'liga', 'data_jogo', 'home', 'away',
             'gols_h', 'gols_a', 'odds_h', 'odds_a',
             'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A'
         ]
