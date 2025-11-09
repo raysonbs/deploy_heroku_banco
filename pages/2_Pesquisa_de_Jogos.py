@@ -144,8 +144,8 @@ def load_data():
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
-st.title(f"Todos os Jogos: {DB_TABLE_NAME.replace('_', ' ')} ⚽")
-st.write(f"Dados da tabela `{DB_TABLE_NAME}` com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
+# st.title(f"Todos os Jogos: {DB_TABLE_NAME.replace('_', ' ')} ⚽")
+# st.write(f"Dados da tabela `{DB_TABLE_NAME}` com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 # --- Placeholder para a mensagem temporária geral ---
 # Criado antes da lógica principal para garantir que esteja sempre disponível.
@@ -210,14 +210,18 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
             'CV_Gols_F_A': 'CV_G_F_A',
             'Porc_0_05FT_H': '%0V_05FT_H',
             'Porc_0_05FT_A': '%0V_05FT_A'
-            
+            # As entradas para 'nova_coluna_db_1' e 'nova_coluna_db_2' foram removidas daqui.
         }
         
         # Lista dos nomes de colunas que esperamos ter no final, na ordem desejada
+        # Assumindo que você já incluiu suas colunas reais aqui.
         final_desired_column_names = [
             'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a',
             'odds_h', 'odds_a', 'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A',
             '%0V_05FT_H','%0V_05FT_A'
+            # As entradas para 'Nova Coluna 1' e 'Nova Coluna 2' foram removidas daqui.
+            # CERTIFIQUE-SE que as suas novas colunas estejam na lista 'final_desired_column_names'
+            # se você as adicionou e quer que apareçam.
         ]
 
         # Aplicar renomeamento para as colunas existentes que estão no mapeamento
@@ -421,7 +425,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
