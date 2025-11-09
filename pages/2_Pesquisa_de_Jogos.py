@@ -140,7 +140,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
     
     if temp_df is not None:
         colunas_originais_para_renomear = [
-            'liga_nome', 'data_sem_fuso', 'home_name', 'away_name',
+            'liga_nome', 'data', 'home_name', 'away_name',
             'homeGoalCount', 'awayGoalCount', 'odds_ft_1', 'odds_ft_2',
             'Media_Gols_F_H', 'Media_Gols_F_A', 'CV_Gols_F_H', 'CV_Gols_F_A'
         ]
