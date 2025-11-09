@@ -208,8 +208,8 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
             'Media_Gols_F_A': 'M_Gols_F_A',
             'CV_Gols_F_H': 'CV_G_F_H',
             'CV_Gols_F_A': 'CV_G_F_A',
-            'Porc_0_05FT_H': '%0V_05FT_H',
-            'Porc_0_05FT_A': '%0V_05FT_A'
+            'Porc_O_05FT_H': '%0V_05FT_H',
+            'Porc_O_05FT_A': '%0V_05FT_A'
             # As entradas para 'nova_coluna_db_1' e 'nova_coluna_db_2' foram removidas daqui.
         }
         
