@@ -13,6 +13,9 @@ import datetime
 API_REFRESH_INTERVAL_MINUTES = 20
 CACHE_DURATION_SECONDS = API_REFRESH_INTERVAL_MINUTES * 60
 
+# Define a duração da mensagem de sucesso temporária em segundos
+SUCCESS_MESSAGE_DURATION_SECONDS = 10 
+
 # --- Configurações Específicas da Página ---
 # Nome da tabela do banco de dados para esta página
 DB_TABLE_NAME = 'temporadas_todos_jogos'
@@ -106,7 +109,7 @@ def load_data():
         with engine.connect() as connection:
             df = pd.read_sql_table(DB_TABLE_NAME, con=connection)
         
-        st.success(f"Dados carregados da tabela '{DB_TABLE_NAME}' com sucesso!")
+        st.success(f"Dados carregados da tabela '{DB_TABLE_NAME}' com sucesso!") # Mantido, pois é sobre a conexão inicial
         return df
     
     except Exception as e:
@@ -124,13 +127,38 @@ if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" not in st.session_state:
 if f"{PAGE_SESSION_STATE_PREFIX}data" not in st.session_state:
     st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = None
 
+# Novas chaves para a mensagem de sucesso temporária
+if f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = False
+if f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = ""
+if f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp" not in st.session_state:
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp"] = 0
+
+# --- Placeholder para a mensagem de sucesso temporária ---
+# Criado antes da lógica principal para garantir que esteja sempre disponível.
+temp_success_message_placeholder = st.empty()
+
+# Lógica para fazer a mensagem de sucesso temporária desaparecer
+if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"]:
+    if time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp"] < SUCCESS_MESSAGE_DURATION_SECONDS:
+        temp_success_message_placeholder.success(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"])
+    else:
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = False
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = ""
+        temp_success_message_placeholder.empty() # Limpa o placeholder
+
 # --- Lógica de Caching de Dados (usando chaves prefixadas) ---
 current_df_page_specific = None
 
 cache_expired = (time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]) > CACHE_DURATION_SECONDS
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired:
-    
+    # Ao iniciar ou recarregar dados, assegure que qualquer mensagem temporária anterior seja limpa
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = False
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = ""
+    temp_success_message_placeholder.empty()
+
     if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None:
         st.info(f"Primeiro carregamento dos dados da sessão para '{DB_TABLE_NAME}' ou dados não encontrados no cache.")
     elif cache_expired:
@@ -140,7 +168,6 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
     
     if temp_df is not None:
         # Definir o mapeamento de colunas original para novo nome
-        # AGORA COM 'data_jogo' no lugar de 'data'
         colunas_map = {
             'liga_nome': 'liga',
             'data_sem_fuso': 'data_jogo', 
@@ -157,7 +184,6 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         }
         
         # Lista dos nomes de colunas que esperamos ter no final, na ordem desejada
-        # AGORA COM 'data_jogo' no lugar de 'data'
         final_desired_column_names = [
             'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a',
             'odds_h', 'odds_a', 'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A'
@@ -170,14 +196,12 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         # Filtrar e reordenar o DataFrame para conter SOMENTE as 'final_desired_column_names'
         columns_present_and_desired = [col for col in final_desired_column_names if col in temp_df.columns]
         temp_df = temp_df[columns_present_and_desired]
-        
-        # --- As mensagens de DEBUG foram removidas daqui ---
-
+            
         # Agora, a conversão de data usa o novo nome da coluna 'data_jogo'
         if 'data_jogo' in temp_df.columns:
             try:
                 temp_df['data_jogo'] = pd.to_datetime(temp_df['data_jogo'], errors='coerce').dt.date
-                st.success("Conversão da coluna 'data_jogo' bem-sucedida.")
+                # st.success("Conversão da coluna 'data_jogo' bem-sucedida.") # Removido, a mensagem principal é a de cache
             except Exception as e:
                 st.error(f"Erro na conversão da coluna 'data_jogo': {e}")
                 st.text("Exemplo de valores na coluna 'data_jogo' que causaram o erro:")
@@ -189,7 +213,12 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = temp_df
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time()
         current_df_page_specific = temp_df
-        st.success(f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão.")
+        
+        # Define a mensagem de sucesso para ser exibida e desaparecer
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}display_temp_success_message"] = True
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_text"] = f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão."
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}temp_success_message_timestamp"] = time.time()
+
     else:
         st.error(f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
         current_df_page_specific = None
