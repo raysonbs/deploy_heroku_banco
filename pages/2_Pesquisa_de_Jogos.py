@@ -207,13 +207,17 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
             'Media_Gols_F_H': 'M_Gols_F_H',
             'Media_Gols_F_A': 'M_Gols_F_A',
             'CV_Gols_F_H': 'CV_G_F_H',
-            'CV_Gols_F_A': 'CV_G_F_A'
+            'CV_Gols_F_A': 'CV_G_F_A',
+            'Porc_0_05FT_H': '%0V_05FT_H',
+            'Porc_0_05FT_A': '%0V_05FT_A'
+            
         }
         
         # Lista dos nomes de colunas que esperamos ter no final, na ordem desejada
         final_desired_column_names = [
             'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a',
-            'odds_h', 'odds_a', 'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A'
+            'odds_h', 'odds_a', 'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A',
+            '%0V_05FT_H','%0V_05FT_A'
         ]
 
         # Aplicar renomeamento para as colunas existentes que estão no mapeamento
