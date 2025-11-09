@@ -143,7 +143,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         # AGORA COM 'data_jogo' no lugar de 'data'
         colunas_map = {
             'liga_nome': 'liga',
-            'data_sem_fuso': 'data_jogo', # <-- ALTERADO AQUI
+            'data_sem_fuso': 'data_jogo', 
             'home_name': 'home',
             'away_name': 'away',
             'homeGoalCount': 'gols_h',
@@ -171,27 +171,20 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         columns_present_and_desired = [col for col in final_desired_column_names if col in temp_df.columns]
         temp_df = temp_df[columns_present_and_desired]
         
-        # --- DEBUGGING: Verifique o estado do DataFrame ANTES da conversão de data ---
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("DEBUG: Info DataFrame")
-        st.sidebar.write("Colunas atuais:", temp_df.columns.tolist())
-        st.sidebar.write("Há colunas duplicadas?", temp_df.columns.duplicated().any())
-        st.sidebar.write("Número de linhas:", len(temp_df))
-        st.sidebar.markdown("---")
-        # --- FIM DEBUGGING ---
+        # --- As mensagens de DEBUG foram removidas daqui ---
 
         # Agora, a conversão de data usa o novo nome da coluna 'data_jogo'
-        if 'data_jogo' in temp_df.columns: # <-- ALTERADO AQUI
+        if 'data_jogo' in temp_df.columns:
             try:
-                temp_df['data_jogo'] = pd.to_datetime(temp_df['data_jogo'], errors='coerce').dt.date # <-- ALTERADO AQUI
-                st.success("Conversão da coluna 'data_jogo' bem-sucedida.") # <-- ALTERADO AQUI
+                temp_df['data_jogo'] = pd.to_datetime(temp_df['data_jogo'], errors='coerce').dt.date
+                st.success("Conversão da coluna 'data_jogo' bem-sucedida.")
             except Exception as e:
-                st.error(f"Erro na conversão da coluna 'data_jogo': {e}") # <-- ALTERADO AQUI
-                st.text("Exemplo de valores na coluna 'data_jogo' que causaram o erro:") # <-- ALTERADO AQUI
-                st.dataframe(temp_df['data_jogo'].value_counts().head()) # <-- ALTERADO AQUI
+                st.error(f"Erro na conversão da coluna 'data_jogo': {e}")
+                st.text("Exemplo de valores na coluna 'data_jogo' que causaram o erro:")
+                st.dataframe(temp_df['data_jogo'].value_counts().head())
                 st.stop()
         else:
-            st.warning("Coluna 'data_jogo' não encontrada após renomeamento e seleção. Conversão de data ignorada.") # <-- ALTERADO AQUI
+            st.warning("Coluna 'data_jogo' não encontrada após renomeamento e seleção. Conversão de data ignorada.")
             
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = temp_df
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time()
@@ -208,15 +201,14 @@ else:
 # --- Lógica para o botão Resetar Filtros ---
 if current_df_page_specific is not None:
     # Definir valores padrão para os filtros baseados no DataFrame carregado
-    # AGORA COM 'data_jogo' no lugar de 'data'
     default_start_date = (
-        current_df_page_specific['data_jogo'].min() # <-- ALTERADO AQUI
-        if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all() # <-- ALTERADO AQUI
+        current_df_page_specific['data_jogo'].min()
+        if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all()
         else datetime.date.today()
     )
     default_end_date = (
-        current_df_page_specific['data_jogo'].max() # <-- ALTERADO AQUI
-        if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all() # <-- ALTERADO AQUI
+        current_df_page_specific['data_jogo'].max()
+        if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all()
         else datetime.date.today()
     )
     default_home_teams = ["Todos"]
@@ -225,7 +217,6 @@ if current_df_page_specific is not None:
 
 
     # Inicializa as chaves do session_state que armazenarão os valores ATUAIS dos filtros
-    # ATENÇÃO: As chaves do session_state usam os prefixos e os nomes de filtro corretos
     if f"{PAGE_SESSION_STATE_PREFIX}current_start_date" not in st.session_state:
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
     if f"{PAGE_SESSION_STATE_PREFIX}current_end_date" not in st.session_state:
@@ -250,14 +241,12 @@ if current_df_page_specific is not None:
 
     st.sidebar.subheader("Configurações de Filtro")
 
-    # ATENÇÃO: current_df_page_specific JÁ ESTÁ COM AS COLUNAS RENOMEADAS E FILTRADAS
-    # Não é necessário renomear ou filtrar colunas novamente aqui.
     filtered_df = current_df_page_specific.copy() 
 
     # --- Filtro de Data ---
-    if 'data_jogo' in filtered_df.columns and not filtered_df['data_jogo'].isnull().all(): # <-- ALTERADO AQUI
-        min_available_date = filtered_df['data_jogo'].min() # <-- ALTERADO AQUI
-        max_available_date = filtered_df['data_jogo'].max() # <-- ALTERADO AQUI
+    if 'data_jogo' in filtered_df.columns and not filtered_df['data_jogo'].isnull().all():
+        min_available_date = filtered_df['data_jogo'].min()
+        max_available_date = filtered_df['data_jogo'].max()
 
         col_date1, col_date2 = st.sidebar.columns(2)
         with col_date1:
@@ -285,11 +274,11 @@ if current_df_page_specific is not None:
             selected_end_date = pd.to_datetime(selected_end_date).date()
             
             filtered_df = filtered_df[
-                (filtered_df['data_jogo'] >= selected_start_date) & # <-- ALTERADO AQUI
-                (filtered_df['data_jogo'] <= selected_end_date)   # <-- ALTERADO AQUI
+                (filtered_df['data_jogo'] >= selected_start_date) &
+                (filtered_df['data_jogo'] <= selected_end_date)
             ]
     else:
-        st.sidebar.warning("Coluna 'data_jogo' não encontrada ou não contém datas válidas para filtrar.") # <-- ALTERADO AQUI
+        st.sidebar.warning("Coluna 'data_jogo' não encontrada ou não contém datas válidas para filtrar.")
 
 
     # --- Filtro de Ligas (liga) ---
@@ -387,7 +376,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
