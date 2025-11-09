@@ -32,11 +32,11 @@ def download_and_store_certificate():
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
-        st.sidebar.info("Baixando certificado SSL...") # Movi para a sidebar
+        st.sidebar.info("Baixando certificado SSL...")
         url = os.getenv('url') 
 
         if not url:
-            st.sidebar.error("A variável de ambiente 'url' (para o certificado) não está definida.") # Movi para a sidebar
+            st.sidebar.error("A variável de ambiente 'url' (para o certificado) não está definida.")
             return None
 
         try:
@@ -52,14 +52,14 @@ def download_and_store_certificate():
             
             st.session_state.cert_path = cert_full_path
             st.session_state.cert_temp_dir = temp_dir
-            st.sidebar.success("Certificado baixado e armazenado com sucesso!") # Movi para a sidebar
+            st.sidebar.success("Certificado baixado e armazenado com sucesso!")
             return cert_full_path
 
         except requests.exceptions.RequestException as e:
-            st.sidebar.error(f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.") # Movi para a sidebar
+            st.sidebar.error(f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.")
             return None
         except Exception as e:
-            st.sidebar.error(f"Erro inesperado no download do certificado: {e}") # Movi para a sidebar
+            st.sidebar.error(f"Erro inesperado no download do certificado: {e}")
             return None
     else:
         return st.session_state.cert_path
@@ -155,80 +155,134 @@ else:
     st.info(f"Usando dados em cache da sessão para '{DB_TABLE_NAME}' (última carga há {time_since_last_load} segundos).")
     current_df_page_specific = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"]
 
-# --- Aplicação de Filtros (na barra lateral) e Exibição dos Dados no Streamlit ---
+# --- Lógica para o botão Resetar Filtros ---
 if current_df_page_specific is not None:
-    st.sidebar.subheader("Configurações de Filtro") # Título do filtro na sidebar
+    # Definir valores padrão para os filtros baseados no DataFrame carregado
+    # Esses valores serão usados tanto para inicializar st.session_state
+    # quanto para o reset.
+    default_start_date = (
+        current_df_page_specific['data_sem_fuso'].min()
+        if 'data_sem_fuso' in current_df_page_specific.columns and not current_df_page_specific['data_sem_fuso'].isnull().all()
+        else datetime.date.today()
+    )
+    default_end_date = (
+        current_df_page_specific['data_sem_fuso'].max()
+        if 'data_sem_fuso' in current_df_page_specific.columns and not current_df_page_specific['data_sem_fuso'].isnull().all()
+        else datetime.date.today()
+    )
+    default_home_teams = ["Todos"]
+    default_away_teams = ["Todos"]
+
+    # Inicializa as chaves do session_state que armazenarão os valores ATUAIS dos filtros
+    if f"{PAGE_SESSION_STATE_PREFIX}current_start_date" not in st.session_state:
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
+    if f"{PAGE_SESSION_STATE_PREFIX}current_end_date" not in st.session_state:
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
+    if f"{PAGE_SESSION_STATE_PREFIX}current_home_teams" not in st.session_state:
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
+    if f"{PAGE_SESSION_STATE_PREFIX}current_away_teams" not in st.session_state:
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
+
+    def reset_filters():
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = default_home_teams
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = default_away_teams
+        st.rerun() # Força a página a recarregar e usar os valores padrão
+
+    # Botão de Resetar Filtros na barra lateral
+    st.sidebar.button("Resetar Filtros ��", on_click=reset_filters)
+
+    st.sidebar.subheader("Configurações de Filtro")
 
     filtered_df = current_df_page_specific.copy()
 
     # --- Filtro de Data ---
     if 'data_sem_fuso' in filtered_df.columns and not filtered_df['data_sem_fuso'].isnull().all():
-        min_available_date = filtered_df['data_sem_fuso'].min()
-        max_available_date = filtered_df['data_sem_fuso'].max()
+        min_available_date = filtered_df['data_sem_fuso'].min() # Data mínima para o seletor
+        max_available_date = filtered_df['data_sem_fuso'].max() # Data máxima para o seletor
 
-        # Usar st.sidebar.columns para alinhar as datas na sidebar
         col_date1, col_date2 = st.sidebar.columns(2)
         with col_date1:
-            start_date_filter = st.sidebar.date_input( # Alterado para st.sidebar.date_input
+            # Usando o valor do session_state para o input
+            selected_start_date = st.sidebar.date_input(
                 "Data Inicial",
-                value=min_available_date if pd.notna(min_available_date) else datetime.date.today(),
-                min_value=min_available_date if pd.notna(min_available_date) else datetime.date(1900, 1, 1),
-                max_value=max_available_date if pd.notna(max_available_date) else datetime.date.today()
+                value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"],
+                min_value=min_available_date,
+                max_value=max_available_date,
+                key=f"{PAGE_SESSION_STATE_PREFIX}date_input_start"
             )
         with col_date2:
-            end_date_filter = st.sidebar.date_input( # Alterado para st.sidebar.date_input
+            # Usando o valor do session_state para o input
+            selected_end_date = st.sidebar.date_input(
                 "Data Final",
-                value=max_available_date if pd.notna(max_available_date) else datetime.date.today(),
-                min_value=min_available_date if pd.notna(min_available_date) else datetime.date(1900, 1, 1),
-                max_value=max_available_date if pd.notna(max_available_date) else datetime.date.today()
+                value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"],
+                min_value=min_available_date,
+                max_value=max_available_date,
+                key=f"{PAGE_SESSION_STATE_PREFIX}date_input_end"
             )
         
-        if start_date_filter and end_date_filter:
-            start_date_filter = pd.to_datetime(start_date_filter).date()
-            end_date_filter = pd.to_datetime(end_date_filter).date()
+        # Atualiza o session_state com os valores selecionados pelo usuário
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = selected_start_date
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = selected_end_date
+
+        # Aplica o filtro usando os valores do session_state
+        if selected_start_date and selected_end_date:
+            selected_start_date = pd.to_datetime(selected_start_date).date()
+            selected_end_date = pd.to_datetime(selected_end_date).date()
             
             filtered_df = filtered_df[
-                (filtered_df['data_sem_fuso'] >= start_date_filter) &
-                (filtered_df['data_sem_fuso'] <= end_date_filter)
+                (filtered_df['data_sem_fuso'] >= selected_start_date) &
+                (filtered_df['data_sem_fuso'] <= selected_end_date)
             ]
     else:
-        st.sidebar.warning("Coluna 'data_sem_fuso' não encontrada ou não contém datas válidas para filtrar.") # Movi para a sidebar
+        st.sidebar.warning("Coluna 'data_sem_fuso' não encontrada ou não contém datas válidas para filtrar.")
 
 
     # --- Filtro de Times (home_name) ---
     if 'home_name' in filtered_df.columns:
         all_home_teams = sorted(current_df_page_specific['home_name'].dropna().unique().tolist())
         home_teams_options = ["Todos"] + all_home_teams
-        selected_home_teams = st.sidebar.multiselect( # Alterado para st.sidebar.multiselect
+        # Usando o valor do session_state para o multiselect
+        selected_home_teams_multiselect = st.sidebar.multiselect(
             "Time da Casa",
             options=home_teams_options,
-            default=["Todos"]
+            default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"],
+            key=f"{PAGE_SESSION_STATE_PREFIX}multiselect_home"
         )
+        # Atualiza o session_state com os valores selecionados pelo usuário
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = selected_home_teams_multiselect
         
-        if "Todos" not in selected_home_teams and selected_home_teams:
-            filtered_df = filtered_df[filtered_df['home_name'].isin(selected_home_teams)]
-        elif not selected_home_teams:
+        # Aplica o filtro usando os valores do session_state
+        if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"]:
+            filtered_df = filtered_df[filtered_df['home_name'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"])]
+        elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"]:
             filtered_df = filtered_df[filtered_df['home_name'].isin([])]
     else:
-        st.sidebar.warning("Coluna 'home_name' não encontrada para filtrar.") # Movi para a sidebar
+        st.sidebar.warning("Coluna 'home_name' não encontrada para filtrar.")
 
 
     # --- Filtro de Times (away_name) ---
     if 'away_name' in filtered_df.columns:
         all_away_teams = sorted(current_df_page_specific['away_name'].dropna().unique().tolist())
         away_teams_options = ["Todos"] + all_away_teams
-        selected_away_teams = st.sidebar.multiselect( # Alterado para st.sidebar.multiselect
+        # Usando o valor do session_state para o multiselect
+        selected_away_teams_multiselect = st.sidebar.multiselect(
             "Time Visitante",
             options=away_teams_options,
-            default=["Todos"]
+            default=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"],
+            key=f"{PAGE_SESSION_STATE_PREFIX}multiselect_away"
         )
+        # Atualiza o session_state com os valores selecionados pelo usuário
+        st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] = selected_away_teams_multiselect
         
-        if "Todos" not in selected_away_teams and selected_away_teams:
-            filtered_df = filtered_df[filtered_df['away_name'].isin(selected_away_teams)]
-        elif not selected_away_teams:
+        # Aplica o filtro usando os valores do session_state
+        if "Todos" not in st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"] and st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"]:
+            filtered_df = filtered_df[filtered_df['away_name'].isin(st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"])]
+        elif not st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_away_teams"]:
             filtered_df = filtered_df[filtered_df['away_name'].isin([])]
     else:
-        st.sidebar.warning("Coluna 'away_name' não encontrada para filtrar.") # Movi para a sidebar
+        st.sidebar.warning("Coluna 'away_name' não encontrada para filtrar.")
 
     st.subheader(f"Dados Filtrados da Tabela '{DB_TABLE_NAME}':")
     if not filtered_df.empty:
@@ -242,7 +296,7 @@ else:
 
 # --- Seção do Contador Decrescente (no rodapé da página principal) ---
 st.markdown("---")
-st.subheader("📊 Status da Sessão de Dados para esta Página")
+st.subheader("�� Status da Sessão de Dados para esta Página")
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_df_page_specific is not None:
     last_loaded_timestamp = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
@@ -266,7 +320,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
