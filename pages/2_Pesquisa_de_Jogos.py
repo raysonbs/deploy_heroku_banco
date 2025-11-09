@@ -30,8 +30,11 @@ st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_display", 
 st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_text", "")
 st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_type", "info") # default type
 st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}temp_message_timestamp", 0)
-st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_start_date", datetime.date.today()) # Valor temporário, será ajustado
-st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_end_date", datetime.date.today())   # Valor temporário, será ajustado
+
+# >> ALTERAÇÃO AQUI: Inicialize current_start_date e current_end_date como None
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_start_date", None) # Agora inicializa como None
+st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_end_date", None)   # Agora inicializa como None
+
 st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_home_teams", ["Todos"])
 st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_away_teams", ["Todos"])
 st.session_state.setdefault(f"{PAGE_SESSION_STATE_PREFIX}current_liga", ["Todos"])
@@ -250,6 +253,17 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time()
         current_df_page_specific = temp_df
         
+        # >> ALTERAÇÃO AQUI: Inicializa os filtros de data com min/max do DataFrame, se ainda não estiverem definidos
+        if 'data_jogo' in temp_df.columns and not temp_df['data_jogo'].isnull().all():
+            min_date_df = temp_df['data_jogo'].min()
+            max_date_df = temp_df['data_jogo'].max()
+
+            # Apenas define se eles ainda são None (primeiro carregamento ou cache limpo)
+            if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] is None:
+                st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = min_date_df
+            if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] is None:
+                st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = max_date_df
+        
     else:
         st.error(f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
         current_df_page_specific = None
@@ -261,22 +275,20 @@ else:
 # --- Lógica para o botão Resetar Filtros ---
 if current_df_page_specific is not None:
     # Definir valores padrão para os filtros baseados no DataFrame carregado
+    # Estes são usados pelo reset_filters e como min/max_value nos date_inputs
     default_start_date = (
         current_df_page_specific['data_jogo'].min()
         if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all()
-        else datetime.date.today()
+        else datetime.date.today() # Fallback se não houver data_jogo válida
     )
     default_end_date = (
         current_df_page_specific['data_jogo'].max()
-        if 'data_jogo' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all()
-        else datetime.date.today()
+        if 'data_df_page_specific' in current_df_page_specific.columns and not current_df_page_specific['data_jogo'].isnull().all()
+        else datetime.date.today() # Fallback se não houver data_jogo válida
     )
-    # Estas chaves já foram inicializadas com setdefault no topo do script,
-    # então aqui estamos apenas definindo os valores padrão para os widgets,
-    # caso os valores no session_state ainda sejam os temporários.
-    # A lógica de st.session_state.setdefault no topo já garante a existência.
     
     def reset_filters():
+        # >> ALTERAÇÃO AQUI: Garante que o reset use os valores min/max do DataFrame
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = default_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = default_end_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_home_teams"] = ["Todos"] # Resetar para o padrão
@@ -300,7 +312,7 @@ if current_df_page_specific is not None:
         with col_date1:
             selected_start_date = st.sidebar.date_input(
                 "Data Inicial",
-                value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"],
+                value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] is not None else default_start_date, # Usar valor do session_state, ou fallback para default_start_date
                 min_value=min_available_date,
                 max_value=max_available_date,
                 key=f"{PAGE_SESSION_STATE_PREFIX}date_input_start"
@@ -308,17 +320,19 @@ if current_df_page_specific is not None:
         with col_date2:
             selected_end_date = st.sidebar.date_input(
                 "Data Final",
-                value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"],
+                value=st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] is not None else default_end_date, # Usar valor do session_state, ou fallback para default_end_date
                 min_value=min_available_date,
                 max_value=max_available_date,
                 key=f"{PAGE_SESSION_STATE_PREFIX}date_input_end"
             )
         
         # Atualiza o session_state com os valores selecionados pelo usuário
+        # Esta parte permanece inalterada, pois o date_input já retorna o valor
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = selected_start_date
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = selected_end_date
 
         if selected_start_date and selected_end_date:
+            # Garante que as datas de filtragem sejam 'date' e não 'Timestamp'
             selected_start_date = pd.to_datetime(selected_start_date).date()
             selected_end_date = pd.to_datetime(selected_end_date).date()
             
@@ -432,6 +446,10 @@ if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Lim
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"]
     if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" in st.session_state:
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
+    
+    # >> ALTERAÇÃO AQUI: Ao limpar o cache, também limpe os estados das datas para que sejam reinicializados com min/max
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_start_date"] = None
+    st.session_state[f"{PAGE_SESSION_STATE_PREFIX}current_end_date"] = None
         
     if 'cert_temp_dir' in st.session_state and st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
         try:
