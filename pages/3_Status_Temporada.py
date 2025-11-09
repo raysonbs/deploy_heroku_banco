@@ -81,11 +81,11 @@ def load_data():
         return None
 
     # Informações de conexão (obtidas de variáveis de ambiente)
-    username = os.getenv('DB_USERNAME') # Use nomes mais específicos para variáveis de ambiente
-    password = os.getenv('DB_PASSWORD')
-    host = os.getenv('DB_HOST')
-    port = os.getenv('DB_PORT')
-    database = os.getenv('DB_DATABASE')
+    username = os.getenv('username')
+    password = os.getenv('password')
+    host = os.getenv('host')
+    port = os.getenv('port')
+    database = os.getenv('database')
 
     # Verifica se todas as variáveis de ambiente necessárias estão definidas
     if not all([username, password, host, port, database]):
