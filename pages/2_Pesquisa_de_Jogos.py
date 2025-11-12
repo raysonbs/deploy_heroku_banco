@@ -205,6 +205,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
             'away_name': 'away',
             'homeGoalCount': 'gols_h',
             'awayGoalCount': 'gols_a',
+            'overallGoalCount':'gols_ft',
             'odds_ft_1': 'odds_h',
             'odds_ft_2': 'odds_a',
             'Media_Gols_F_H': 'M_Gols_F_H',
@@ -219,7 +220,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         # Lista dos nomes de colunas que esperamos ter no final, na ordem desejada
         # Assumindo que você já incluiu suas colunas reais aqui.
         final_desired_column_names = [
-            'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a',
+            'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a','golsft',
             'odds_h', 'odds_a', 'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A',
             '%0V_05FT_H','%0V_05FT_A'
             # As entradas para 'Nova Coluna 1' e 'Nova Coluna 2' foram removidas daqui.
