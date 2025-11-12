@@ -220,7 +220,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         # Lista dos nomes de colunas que esperamos ter no final, na ordem desejada
         # Assumindo que você já incluiu suas colunas reais aqui.
         final_desired_column_names = [
-            'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a','golsft',
+            'liga', 'data_jogo', 'home', 'away', 'gols_h', 'gols_a','gols_ft',
             'odds_h', 'odds_a', 'M_Gols_F_H', 'M_Gols_F_A', 'CV_G_F_H', 'CV_G_F_A',
             '%0V_05FT_H','%0V_05FT_A'
             # As entradas para 'Nova Coluna 1' e 'Nova Coluna 2' foram removidas daqui.
