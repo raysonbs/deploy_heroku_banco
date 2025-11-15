@@ -257,13 +257,13 @@ if current_df_page_specific is not None:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
             st.metric(label="Ligas da Temporada 2025", value=count_2025)
-            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2025['Nome_da_Liga'].to_list())
+            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2025['name'].to_list())
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
             st.metric(label="Ligas da Temporada 2026", value=count_2026)
-            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2026['Nome_da_Liga'].to_list())
+            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2026['name'].to_list())
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         with col1:
