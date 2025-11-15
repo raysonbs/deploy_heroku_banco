@@ -250,16 +250,20 @@ if current_df_page_specific is not None:
         # Mantendo filtro como string "2025" e "2026"
         count_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == "2025"].shape[0]
         count_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == "2026"].shape[0]
+        df_ligas_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == "2025"]
+        df_ligas_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == "2026"]
 
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
             st.metric(label="Ligas da Temporada 2025", value=count_2025)
+            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2025['Nome_da_Liga'].to_list())
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
             st.metric(label="Ligas da Temporada 2026", value=count_2026)
+            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2026['Nome_da_Liga'].to_list())
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         with col1:
