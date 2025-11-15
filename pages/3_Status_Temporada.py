@@ -253,32 +253,32 @@ if current_df_page_specific is not None:
 
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
-            st.metric(label="Temporada 2025", value=count_2025)
+            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
+            st.metric(label="Ligas da Temporada 2025", value=count_2025)
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
-            st.metric(label="Temporada 2026", value=count_2026)
+            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
+            st.metric(label="Ligas da Temporada 2026", value=count_2026)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
+            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
             st.metric(label="T. 2025", value="N/A")
             st.caption("Coluna 'Temporada' não encontrada.")
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
+            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
             st.metric(label="T. 2026", value="N/A")
             st.caption("Coluna 'Temporada' não encontrada.")
             st.markdown('</div>', unsafe_allow_html=True)
             
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
-        st.metric(label="Total de Registros (Linhas)", value=current_df_page_specific.shape[0])
+        # st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
+        st.metric(label="Total de ligas ativas", value=current_df_page_specific.shape[0])
         st.markdown('</div>', unsafe_allow_html=True)
 
 else:
