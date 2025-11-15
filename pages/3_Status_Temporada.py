@@ -221,14 +221,15 @@ else:
 st.markdown("---") # Separador visual simples
 
 # --- Seção de Métricas em Cartão ---
-st.subheader("�� Resumo das Métricas")
+st.subheader("📊 Resumo das Métricas")
 
-col1, col2, col3, col4 = st.columns(4)
+# Alterado para 3 colunas
+col1, col2, col3 = st.columns(3)
 
 # Verifica se o DataFrame foi carregado com sucesso antes de tentar calcular as métricas
 if current_df_page_specific is not None:
     # Verifica se a coluna 'temporada' existe no DataFrame
-    if 'temporada' in current_df_page_specific.columns:
+    if 'temporada' in current_df_page_specific.columns: # Mantido 'temporada' minúsculo
         # Calculando contagem para temporada 2025
         count_2025 = current_df_page_specific[current_df_page_specific['temporada'] == 2025].shape[0]
         
@@ -260,12 +261,6 @@ if current_df_page_specific is not None:
         # Número total de linhas no DataFrame (df.shape[0])
         st.metric(label="Total de Registros (Linhas)", value=current_df_page_specific.shape[0])
         st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        # Número total de colunas no DataFrame (df.shape[1])
-        st.metric(label="Total de Colunas", value=current_df_page_specific.shape[1])
-        st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     # Se o DataFrame não estiver disponível, exibir cartões com "N/A"
@@ -282,11 +277,6 @@ else:
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
         st.metric(label="Total Registros", value="N/A")
-        st.caption("Dados não disponíveis.")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric(label="Total Colunas", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
             
@@ -321,7 +311,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     # Limpa as entradas de dados do cache específicas desta página
