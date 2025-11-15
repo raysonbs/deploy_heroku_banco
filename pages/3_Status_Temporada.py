@@ -15,7 +15,7 @@ CACHE_DURATION_SECONDS = API_REFRESH_INTERVAL_MINUTES * 60
 
 # --- Configurações Específicas da Página ---
 # Nome da tabela do banco de dados para esta página
-DB_TABLE_NAME = 'diagnostico_Over05FT'
+DB_TABLE_NAME = 'ligas_ativas_total'
 # Prefixo para as chaves do session_state desta página, para evitar conflitos
 PAGE_SESSION_STATE_PREFIX = f"{DB_TABLE_NAME}_"
 
