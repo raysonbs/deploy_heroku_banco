@@ -133,7 +133,7 @@ def load_data():
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
-st.title(f"Diagnóstico de Jogos: {DB_TABLE_NAME.replace('_', ' ')} ��")
+st.title(f"Diagnóstico de Jogos: {DB_TABLE_NAME.replace('_', ' ')} 📊")
 st.write(f"Dados da tabela `{DB_TABLE_NAME}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 # --- CSS Personalizado para os Cartões ---
@@ -168,14 +168,17 @@ st.markdown(
     }
     .league-list { /* Estilo para a lista de ligas */
         text-align: left; /* Alinha a lista à esquerda dentro do card */
-        list-style-position: inside; /* Manda o bullet pra dentro da lista */
-        padding-left: 0;
+        list-style-position: inside; /* Garante que o número esteja dentro do padding */
+        padding-left: 0; /* Remove o padding padrão da UL/OL */
         margin-top: 10px;
         font-size: 0.9em;
-        color: #666666;
+        /* A cor padrão da lista (se não for sobrescrita nos LI) */
+        color: #666666; 
     }
     .league-list li {
         margin-bottom: 5px;
+        list-style-type: decimal; /* Garante numeração */
+        color: white; /* <--- ALTERAÇÃO AQUI: Nomes das ligas em branco */
     }
 
     /* Estilos para os componentes st.metric dentro dos cartões */
@@ -266,24 +269,26 @@ if current_df_page_specific is not None:
 
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<p class="card-title-text">Ligas da Temporada 2025</p>', unsafe_allow_html=True) 
-            st.metric(label="Total de Ligas", value=count_2025)
+            # st.markdown('<p class="card-title-text">Ligas da Temporada 2025</p>', unsafe_allow_html=True) 
+            st.metric(label="Ligas da Temporada 2025", value=count_2025)
             if not df_ligas_2025.empty:
                 league_names_2025 = df_ligas_2025['name'].to_list()
                 st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
-                st.markdown(f"<ul class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2025]) + "</ul>", unsafe_allow_html=True)
+                # Usando <ol> para numeração automática
+                st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2025]) + "</ol>", unsafe_allow_html=True)
             else:
                 st.markdown('<p class="card-title-text">Nenhuma liga encontrada para 2025.</p>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.markdown('<p class="card-title-text">Ligas da Temporada 2026</p>', unsafe_allow_html=True) 
-            st.metric(label="Total de Ligas", value=count_2026)
+            # st.markdown('<p class="card-title-text">Ligas da Temporada 2026</p>', unsafe_allow_html=True) 
+            st.metric(label="Ligas da Temporada 2026", value=count_2026)
             if not df_ligas_2026.empty:
                 league_names_2026 = df_ligas_2026['name'].to_list()
                 st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
-                st.markdown(f"<ul class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2026]) + "</ul>", unsafe_allow_html=True)
+                # Usando <ol> para numeração automática
+                st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2026]) + "</ol>", unsafe_allow_html=True)
             else:
                 st.markdown('<p class="card-title-text">Nenhuma liga encontrada para 2026.</p>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -303,7 +308,7 @@ if current_df_page_specific is not None:
             
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
+        # st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
         st.metric(label="Total de ligas ativas", value=current_df_page_specific.shape[0])
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -351,7 +356,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
     else:
         add_app_message("warning", f"O cache dos dados da tabela '{DB_TABLE_NAME}' expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.")
 else:
-    add_app_message("info", f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.") # Esta mensagem também vai para o log agora.
+    add_app_message("info", f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
 if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
     add_app_message("info", f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
@@ -389,5 +394,4 @@ else:
     st.info("Nenhuma mensagem de log para exibir no momento.")
 
 # Limpa as mensagens após a exibição para que não se acumulem em reruns.
-# Isso garante que o log mostre apenas as mensagens do ciclo atual de execução.
 st.session_state['app_messages'] = []
