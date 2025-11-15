@@ -33,10 +33,10 @@ def download_and_store_certificate():
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
         st.info("Baixando certificado SSL...")
-        url = os.getenv('URL_DO_CERTIFICADO') # Variável de ambiente para a URL do certificado (ajustado para ser mais explícito)
+        url = os.getenv('url') # Variável de ambiente para a URL do certificado
 
         if not url:
-            st.error("A variável de ambiente 'URL_DO_CERTIFICADO' não está definida.")
+            st.error("A variável de ambiente 'url' não está definida. Exemplo: url='https://seusite.com/cert.crt'")
             return None
 
         try:
@@ -81,15 +81,15 @@ def load_data():
         return None
 
     # Informações de conexão (obtidas de variáveis de ambiente)
-    username = os.getenv('DB_USERNAME') # Ajustado para ser mais explícito
-    password = os.getenv('DB_PASSWORD') # Ajustado para ser mais explícito
-    host = os.getenv('DB_HOST')       # Ajustado para ser mais explícito
-    port = os.getenv('DB_PORT')       # Ajustado para ser mais explícito
-    database = os.getenv('DB_DATABASE')   # Ajustado para ser mais explícito
+    username = os.getenv('username')
+    password = os.getenv('password')
+    host = os.getenv('host')
+    port = os.getenv('port')
+    database = os.getenv('database')
 
     # Verifica se todas as variáveis de ambiente necessárias estão definidas
     if not all([username, password, host, port, database]):
-        st.error("Variáveis de ambiente para conexão com o banco de dados incompletas (DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_DATABASE).")
+        st.error("Variáveis de ambiente para conexão com o banco de dados incompletas (username, password, host, port, database).")
         return None
     
     # Converte a porta para inteiro
@@ -141,30 +141,38 @@ st.markdown(
         margin-bottom: 20px; /* Margem inferior para separar cartões */
         border: 1px solid #e6e6e6; /* Borda sutil */
         text-align: center; /* Centraliza o texto dentro do cartão */
+        height: 100%; /* Garante que o cartão ocupe a altura total da coluna */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
     .metric-card h3 {
         font-size: 1.2em; /* Tamanho do título do cartão */
         color: #333333;
         margin-bottom: 10px;
     }
-    .st-emotion-cache-1r6dm7m p { /* Alvo os parágrafos dentro de st.metric */
+    /* Estas classes são do Streamlit e podem mudar. Inspecione o elemento para confirmar */
+    .st-emotion-cache-1r6dm7m { /* Container geral da métrica */
+        width: 100%;
+    }
+    .st-emotion-cache-1r6dm7m p { /* Valor da métrica */
         font-size: 1.5em;
         font-weight: bold;
         color: #007bff; /* Cor para os valores das métricas */
     }
-    .st-emotion-cache-1r6dm7m small { /* Alvo os labels de st.metric */
+    .st-emotion-cache-1r6dm7m small { /* Label da métrica */
         color: #555555;
     }
-    /* Estilo para as colunas dentro do cartão para melhor alinhamento */
-    .st-emotion-cache-1d37m4l { /* Esta classe pode variar, verifique no inspecionar elemento */
-        align-items: center;
-        justify-content: center;
+    /* Ajuste para as colunas Streamlit para que os cards fiquem alinhados */
+    .st-emotion-cache-ocqbe5 { /* Esta classe pode variar. Inspecione o elemento para confirmar */
+        display: flex;
+        flex-direction: column;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
-
 
 # --- Inicialização das Variáveis de Estado da Sessão (com prefixo) ---
 if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" not in st.session_state:
@@ -213,61 +221,77 @@ else:
 st.markdown("---") # Separador visual simples
 
 # --- Seção de Métricas em Cartão ---
-st.subheader("📊 Resumo das Métricas")
+st.subheader("�� Resumo das Métricas")
 
-# Envolvendo a seção de métricas em um container com o estilo de cartão
-with st.container():
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True) # Abre a div do cartão
+col1, col2, col3, col4 = st.columns(4)
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    # Verifica se o DataFrame foi carregado com sucesso antes de tentar calcular as métricas
-    if current_df_page_specific is not None:
-        # Verifica se a coluna 'temporada' existe no DataFrame
-        if 'temporada' in current_df_page_specific.columns:
-            # Calculando contagem para temporada 2025
-            count_2025 = current_df_page_specific[current_df_page_specific['temporada'] == 2025].shape[0]
-            
-            # Calculando contagem para temporada 2026
-            count_2026 = current_df_page_specific[current_df_page_specific['temporada'] == 2026].shape[0]
-
-            with col1:
-                st.metric(label="Registros Temporada 2025", value=count_2025)
-            with col2:
-                st.metric(label="Registros Temporada 2026", value=count_2026)
-        else:
-            with col1:
-                st.metric(label="Registros T. 2025", value="N/A")
-                st.caption("Coluna 'temporada' não encontrada.")
-            with col2:
-                st.metric(label="Registros T. 2026", value="N/A")
-                st.caption("Coluna 'temporada' não encontrada.")
-                
-        with col3:
-            # Número total de linhas no DataFrame (df.shape[0])
-            st.metric(label="Total de Registros (Linhas)", value=current_df_page_specific.shape[0])
+# Verifica se o DataFrame foi carregado com sucesso antes de tentar calcular as métricas
+if current_df_page_specific is not None:
+    # Verifica se a coluna 'temporada' existe no DataFrame
+    if 'temporada' in current_df_page_specific.columns:
+        # Calculando contagem para temporada 2025
+        count_2025 = current_df_page_specific[current_df_page_specific['temporada'] == 2025].shape[0]
         
-        with col4:
-            # Número total de colunas no DataFrame (df.shape[1])
-            st.metric(label="Total de Colunas", value=current_df_page_specific.shape[1])
+        # Calculando contagem para temporada 2026
+        count_2026 = current_df_page_specific[current_df_page_specific['temporada'] == 2026].shape[0]
 
+        with col1:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.metric(label="Registros Temporada 2025", value=count_2025)
+            st.markdown('</div>', unsafe_allow_html=True)
+        with col2:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.metric(label="Registros Temporada 2026", value=count_2026)
+            st.markdown('</div>', unsafe_allow_html=True)
     else:
         with col1:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric(label="Registros T. 2025", value="N/A")
-            st.caption("Dados não disponíveis.")
+            st.caption("Coluna 'temporada' não encontrada.")
+            st.markdown('</div>', unsafe_allow_html=True)
         with col2:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric(label="Registros T. 2026", value="N/A")
-            st.caption("Dados não disponíveis.")
-        with col3:
-            st.metric(label="Total Registros", value="N/A")
-            st.caption("Dados não disponíveis.")
-        with col4:
-            st.metric(label="Total Colunas", value="N/A")
-            st.caption("Dados não disponíveis.")
+            st.caption("Coluna 'temporada' não encontrada.")
+            st.markdown('</div>', unsafe_allow_html=True)
             
-    st.markdown('</div>', unsafe_allow_html=True) # Fecha a div do cartão
+    with col3:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        # Número total de linhas no DataFrame (df.shape[0])
+        st.metric(label="Total de Registros (Linhas)", value=current_df_page_specific.shape[0])
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        # Número total de colunas no DataFrame (df.shape[1])
+        st.metric(label="Total de Colunas", value=current_df_page_specific.shape[1])
+        st.markdown('</div>', unsafe_allow_html=True)
 
+else:
+    # Se o DataFrame não estiver disponível, exibir cartões com "N/A"
+    with col1:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric(label="Registros T. 2025", value="N/A")
+        st.caption("Dados não disponíveis.")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric(label="Registros T. 2026", value="N/A")
+        st.caption("Dados não disponíveis.")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric(label="Total Registros", value="N/A")
+        st.caption("Dados não disponíveis.")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col4:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.metric(label="Total Colunas", value="N/A")
+        st.caption("Dados não disponíveis.")
+        st.markdown('</div>', unsafe_allow_html=True)
+            
 st.markdown("---") # Separador visual simples
+
 # --- Seção do Contador Decrescente (Mantida fora do card de métricas) ---
 st.subheader("⏳ Status da Sessão de Dados para esta Página") # Título mais específico
 
@@ -319,5 +343,4 @@ if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Lim
         st.session_state.cert_path = None
         st.session_state.cert_temp_dir = None
         
-
     st.rerun()
