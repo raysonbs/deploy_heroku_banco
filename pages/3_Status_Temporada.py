@@ -40,11 +40,11 @@ def download_and_store_certificate():
     if 'cert_path' not in st.session_state or st.session_state.cert_path is None or \
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
-        add_app_message("info", "Baixando certificado SSL...") # Adiciona à lista
+        add_app_message("info", "Baixando certificado SSL...")
         url = os.getenv('url') # Variável de ambiente para a URL do certificado
 
         if not url:
-            add_app_message("error", "A variável de ambiente 'url' não está definida. Exemplo: url='https://seusite.com/cert.crt'") # Adiciona à lista
+            add_app_message("error", "A variável de ambiente 'url' não está definida. Exemplo: url='https://seusite.com/cert.crt'")
             return None
 
         try:
@@ -62,14 +62,14 @@ def download_and_store_certificate():
             
             st.session_state.cert_path = cert_full_path
             st.session_state.cert_temp_dir = temp_dir # Armazena o diretório temporário para possível limpeza
-            add_app_message("success", "Certificado baixado e armazenado com sucesso!") # Adiciona à lista
+            add_app_message("success", "Certificado baixado e armazenado com sucesso!")
             return cert_full_path
 
         except requests.exceptions.RequestException as e:
-            add_app_message("error", f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.") # Adiciona à lista
+            add_app_message("error", f"Erro ao baixar o certificado: {e}. Verifique a URL e sua conexão.")
             return None
         except Exception as e:
-            add_app_message("error", f"Erro inesperado no download do certificado: {e}") # Adiciona à lista
+            add_app_message("error", f"Erro inesperado no download do certificado: {e}")
             return None
     else:
         return st.session_state.cert_path
@@ -84,7 +84,7 @@ def load_data():
     # Garante que o certificado seja baixado e seu caminho seja obtido
     cert_path_for_db = download_and_store_certificate()
     if cert_path_for_db is None:
-        add_app_message("error", "Não foi possível obter o certificado SSL necessário para a conexão com o banco de dados.") # Adiciona à lista
+        add_app_message("error", "Não foi possível obter o certificado SSL necessário para a conexão com o banco de dados.")
         return None
 
     # Informações de conexão (obtidas de variáveis de ambiente)
@@ -96,14 +96,14 @@ def load_data():
 
     # Verifica se todas as variáveis de ambiente necessárias estão definidas
     if not all([username, password, host, port, database]):
-        add_app_message("error", "Variáveis de ambiente para conexão com o banco de dados incompletas (username, password, host, port, database).") # Adiciona à lista
+        add_app_message("error", "Variáveis de ambiente para conexão com o banco de dados incompletas (username, password, host, port, database).")
         return None
     
     # Converte a porta para inteiro
     try:
         port = int(port)
     except (ValueError, TypeError):
-        add_app_message("error", f"A porta do banco de dados '{port}' não é um número válido.") # Adiciona à lista
+        add_app_message("error", f"A porta do banco de dados '{port}' não é um número válido.")
         return None
 
     # Configurações SSL para SQLAlchemy
@@ -124,17 +124,17 @@ def load_data():
         with engine.connect() as connection:
             df = pd.read_sql_table(DB_TABLE_NAME, con=connection)
         
-        add_app_message("success", f"Dados carregados da tabela '{DB_TABLE_NAME}' com sucesso!") # Adiciona à lista
+        add_app_message("success", f"Dados carregados da tabela '{DB_TABLE_NAME}' com sucesso!")
         return df
     
     except Exception as e:
-        add_app_message("error", f"Erro ao conectar ou carregar dados do banco de dados da tabela '{DB_TABLE_NAME}': {e}") # Adiciona à lista
+        add_app_message("error", f"Erro ao conectar ou carregar dados do banco de dados da tabela '{DB_TABLE_NAME}': {e}")
         return None
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
 st.title(f"Diagnóstico de Jogos: {DB_TABLE_NAME.replace('_', ' ')} ��")
-st.write(f"Dados da tabela `{DB_TABLE_NAME}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.") # Esta mensagem é intencionalmente exibida no topo
+st.write(f"Dados da tabela `{DB_TABLE_NAME}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 # --- CSS Personalizado para os Cartões ---
 st.markdown(
@@ -165,6 +165,17 @@ st.markdown(
         color: #555555;
         margin-bottom: 5px;
         font-weight: normal;
+    }
+    .league-list { /* Estilo para a lista de ligas */
+        text-align: left; /* Alinha a lista à esquerda dentro do card */
+        list-style-position: inside; /* Manda o bullet pra dentro da lista */
+        padding-left: 0;
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #666666;
+    }
+    .league-list li {
+        margin-bottom: 5px;
     }
 
     /* Estilos para os componentes st.metric dentro dos cartões */
@@ -210,9 +221,9 @@ cache_expired = (time.time() - st.session_state[f"{PAGE_SESSION_STATE_PREFIX}las
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired:
     
     if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None:
-        add_app_message("info", f"Primeiro carregamento dos dados da sessão para '{DB_TABLE_NAME}' ou dados não encontrados no cache.") # Adiciona à lista
+        add_app_message("info", f"Primeiro carregamento dos dados da sessão para '{DB_TABLE_NAME}' ou dados não encontrados no cache.")
     elif cache_expired:
-        add_app_message("warning", f"Cache de dados para '{DB_TABLE_NAME}' expirado (última carga há {int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])} segundos). Recarregando dados...") # Adiciona à lista
+        add_app_message("warning", f"Cache de dados para '{DB_TABLE_NAME}' expirado (última carga há {int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])} segundos). Recarregando dados...")
     
     temp_df = load_data() 
     
@@ -220,14 +231,14 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] is None or cache_expired
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] = temp_df
         st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] = time.time() # Atualiza o timestamp na carga bem-sucedida
         current_df_page_specific = temp_df # Atribui ao local para este rerun
-        add_app_message("success", f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão.") # Adiciona à lista
+        add_app_message("success", f"Dados da tabela '{DB_TABLE_NAME}' carregados e atualizados no cache da sessão.")
     else:
-        add_app_message("error", f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.") # Adiciona à lista
+        add_app_message("error", f"Falha crítica ao carregar dados da tabela '{DB_TABLE_NAME}'. Por favor, verifique as mensagens de erro acima e as variáveis de ambiente.")
         current_df_page_specific = None # Garante que o local seja None se a carga falhou
 else:
     # Os dados já estão no session_state e não expiraram
     time_since_last_load = int(time.time() - st.session_state[f'{PAGE_SESSION_STATE_PREFIX}last_loaded'])
-    add_app_message("info", f"Usando dados em cache da sessão para '{DB_TABLE_NAME}' (última carga há {time_since_last_load} segundos).") # Adiciona à lista
+    add_app_message("info", f"Usando dados em cache da sessão para '{DB_TABLE_NAME}' (última carga há {time_since_last_load} segundos).")
     current_df_page_specific = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"] # Atribui do cache ao local
 
 # --- Exibição dos Dados no Streamlit ---
@@ -235,7 +246,7 @@ if current_df_page_specific is not None:
     st.subheader(f"Dados de '{DB_TABLE_NAME}' Carregados:")
     st.dataframe(current_df_page_specific, use_container_width=True)
 else:
-    add_app_message("warning", f"Nenhum dado da tabela '{DB_TABLE_NAME}' disponível para exibição. Verifique as mensagens de erro e carregamento acima.") # Adiciona à lista
+    add_app_message("warning", f"Nenhum dado da tabela '{DB_TABLE_NAME}' disponível para exibição.")
 
 st.markdown("---") # Separador visual simples
 
@@ -245,43 +256,54 @@ st.subheader("📊 Resumo das Métricas")
 col1, col2, col3 = st.columns(3)
 
 if current_df_page_specific is not None:
-    # Verifica se a coluna 'Temporada' existe no DataFrame (observação: usei 'Temporada' capitalizado)
     if 'Temporada' in current_df_page_specific.columns: 
         # Mantendo filtro como string "2025" e "2026"
-        count_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == "2025"].shape[0]
-        count_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == "2026"].shape[0]
         df_ligas_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == "2025"]
         df_ligas_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == "2026"]
+        
+        count_2025 = df_ligas_2025.shape[0]
+        count_2026 = df_ligas_2026.shape[0]
 
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
-            st.metric(label="Ligas da Temporada 2025", value=count_2025)
-            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2025['name'].to_list())
+            st.markdown('<p class="card-title-text">Ligas da Temporada 2025</p>', unsafe_allow_html=True) 
+            st.metric(label="Total de Ligas", value=count_2025)
+            if not df_ligas_2025.empty:
+                league_names_2025 = df_ligas_2025['name'].to_list()
+                st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
+                st.markdown(f"<ul class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2025]) + "</ul>", unsafe_allow_html=True)
+            else:
+                st.markdown('<p class="card-title-text">Nenhuma liga encontrada para 2025.</p>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
+
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) 
-            st.metric(label="Ligas da Temporada 2026", value=count_2026)
-            st.metric(label="Ligas da Temporada 2025", value=df_ligas_2026['name'].to_list())
+            st.markdown('<p class="card-title-text">Ligas da Temporada 2026</p>', unsafe_allow_html=True) 
+            st.metric(label="Total de Ligas", value=count_2026)
+            if not df_ligas_2026.empty:
+                league_names_2026 = df_ligas_2026['name'].to_list()
+                st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
+                st.markdown(f"<ul class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2026]) + "</ul>", unsafe_allow_html=True)
+            else:
+                st.markdown('<p class="card-title-text">Nenhuma liga encontrada para 2026.</p>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
-            st.metric(label="T. 2025", value="N/A")
+            st.markdown('<p class="card-title-text">Ligas da Temporada 2025</p>', unsafe_allow_html=True)
+            st.metric(label="Total de Ligas", value="N/A")
             st.caption("Coluna 'Temporada' não encontrada.")
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            # st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
-            st.metric(label="T. 2026", value="N/A")
+            st.markdown('<p class="card-title-text">Ligas da Temporada 2026</p>', unsafe_allow_html=True)
+            st.metric(label="Total de Ligas", value="N/A")
             st.caption("Coluna 'Temporada' não encontrada.")
             st.markdown('</div>', unsafe_allow_html=True)
             
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        # st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
+        st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
         st.metric(label="Total de ligas ativas", value=current_df_page_specific.shape[0])
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -289,27 +311,27 @@ else:
     # Se o DataFrame não estiver disponível, exibir cartões com "N/A"
     with col1:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
-        st.metric(label="T. 2025", value="N/A")
+        st.markdown('<p class="card-title-text">Ligas da Temporada 2025</p>', unsafe_allow_html=True)
+        st.metric(label="Total de Ligas", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
     with col2:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True)
-        st.metric(label="T. 2026", value="N/A")
+        st.markdown('<p class="card-title-text">Ligas da Temporada 2026</p>', unsafe_allow_html=True)
+        st.metric(label="Total de Ligas", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
         st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True)
-        st.metric(label="Total Registros", value="N/A")
+        st.metric(label="Total de ligas ativas", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
             
 st.markdown("---") # Separador visual simples
 
 # --- Seção do Contador Decrescente (Mantida no local, pois é um componente visual) ---
-st.subheader("⏳ Status da Sessão de Dados para esta Página") # Título mais específico
+st.subheader("⏳ Status da Sessão de Dados para esta Página")
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_df_page_specific is not None:
     last_loaded_timestamp = st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"]
@@ -327,12 +349,12 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
             f" O contador atualiza a cada interação ou recarregamento da página."
         )
     else:
-        add_app_message("warning", f"O cache dos dados da tabela '{DB_TABLE_NAME}' expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.") # Adiciona à lista
+        add_app_message("warning", f"O cache dos dados da tabela '{DB_TABLE_NAME}' expirou. Os dados serão atualizados na próxima interação ou recarregamento da página.")
 else:
-    st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.") # Esta mensagem é intencional e pode aparecer antes do log, informando sobre o cache.
+    add_app_message("info", f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.") # Esta mensagem também vai para o log agora.
 
 if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
-    add_app_message("info", f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...") # Adiciona à lista
+    add_app_message("info", f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     if f"{PAGE_SESSION_STATE_PREFIX}data" in st.session_state:
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX}data"]
@@ -342,9 +364,9 @@ if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Lim
     if 'cert_temp_dir' in st.session_state and st.session_state.cert_temp_dir and os.path.exists(st.session_state.cert_temp_dir):
         try:
             shutil.rmtree(st.session_state.cert_temp_dir)
-            add_app_message("info", f"Diretório temporário do certificado '{st.session_state.cert_temp_dir}' limpo.") # Adiciona à lista
+            add_app_message("info", f"Diretório temporário do certificado '{st.session_state.cert_temp_dir}' limpo.")
         except Exception as e:
-            add_app_message("warning", f"Não foi possível limpar o diretório temporário do certificado: {e}") # Adiciona à lista
+            add_app_message("warning", f"Não foi possível limpar o diretório temporário do certificado: {e}")
         st.session_state.cert_path = None
         st.session_state.cert_temp_dir = None
         
@@ -366,5 +388,6 @@ if st.session_state['app_messages']: # Só mostra o log se houver mensagens
 else:
     st.info("Nenhuma mensagem de log para exibir no momento.")
 
-# Limpa as mensagens após a exibição para que não se acumulem em reruns (opcional, pode remover se quiser histórico)
+# Limpa as mensagens após a exibição para que não se acumulem em reruns.
+# Isso garante que o log mostre apenas as mensagens do ciclo atual de execução.
 st.session_state['app_messages'] = []
