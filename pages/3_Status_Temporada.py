@@ -33,7 +33,7 @@ def download_and_store_certificate():
        (st.session_state.cert_path and not os.path.exists(st.session_state.cert_path)):
         
         st.info("Baixando certificado SSL...")
-        url = os.getenv('url') # Variável de ambiente para a URL do certificado
+        url = os.getenv('URL_DO_CERTIFICADO') # Variável de ambiente para a URL do certificado (ajustado para ser mais explícito)
 
         if not url:
             st.error("A variável de ambiente 'URL_DO_CERTIFICADO' não está definida.")
@@ -81,11 +81,11 @@ def load_data():
         return None
 
     # Informações de conexão (obtidas de variáveis de ambiente)
-    username = os.getenv('username')
-    password = os.getenv('password')
-    host = os.getenv('host')
-    port = os.getenv('port')
-    database = os.getenv('database')
+    username = os.getenv('DB_USERNAME') # Ajustado para ser mais explícito
+    password = os.getenv('DB_PASSWORD') # Ajustado para ser mais explícito
+    host = os.getenv('DB_HOST')       # Ajustado para ser mais explícito
+    port = os.getenv('DB_PORT')       # Ajustado para ser mais explícito
+    database = os.getenv('DB_DATABASE')   # Ajustado para ser mais explícito
 
     # Verifica se todas as variáveis de ambiente necessárias estão definidas
     if not all([username, password, host, port, database]):
@@ -128,6 +128,43 @@ def load_data():
 st.set_page_config(layout="wide")
 st.title(f"Diagnóstico de Jogos: {DB_TABLE_NAME.replace('_', ' ')} 📊")
 st.write(f"Dados da tabela `{DB_TABLE_NAME}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
+
+# --- CSS Personalizado para os Cartões ---
+st.markdown(
+    """
+    <style>
+    .metric-card {
+        background-color: #ffffff; /* Fundo branco */
+        border-radius: 10px; /* Bordas arredondadas */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
+        padding: 20px; /* Espaçamento interno */
+        margin-bottom: 20px; /* Margem inferior para separar cartões */
+        border: 1px solid #e6e6e6; /* Borda sutil */
+        text-align: center; /* Centraliza o texto dentro do cartão */
+    }
+    .metric-card h3 {
+        font-size: 1.2em; /* Tamanho do título do cartão */
+        color: #333333;
+        margin-bottom: 10px;
+    }
+    .st-emotion-cache-1r6dm7m p { /* Alvo os parágrafos dentro de st.metric */
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #007bff; /* Cor para os valores das métricas */
+    }
+    .st-emotion-cache-1r6dm7m small { /* Alvo os labels de st.metric */
+        color: #555555;
+    }
+    /* Estilo para as colunas dentro do cartão para melhor alinhamento */
+    .st-emotion-cache-1d37m4l { /* Esta classe pode variar, verifique no inspecionar elemento */
+        align-items: center;
+        justify-content: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 # --- Inicialização das Variáveis de Estado da Sessão (com prefixo) ---
 if f"{PAGE_SESSION_STATE_PREFIX}last_loaded" not in st.session_state:
@@ -173,9 +210,66 @@ if current_df_page_specific is not None:
 else:
     st.warning(f"Nenhum dado da tabela '{DB_TABLE_NAME}' disponível para exibição. Verifique as mensagens de erro e carregamento acima.")
 
-# --- Seção do Contador Decrescente ---
 st.markdown("---") # Separador visual simples
-st.subheader("📊 Status da Sessão de Dados para esta Página") # Título mais específico
+
+# --- Seção de Métricas em Cartão ---
+st.subheader("📊 Resumo das Métricas")
+
+# Envolvendo a seção de métricas em um container com o estilo de cartão
+with st.container():
+    st.markdown('<div class="metric-card">', unsafe_allow_html=True) # Abre a div do cartão
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    # Verifica se o DataFrame foi carregado com sucesso antes de tentar calcular as métricas
+    if current_df_page_specific is not None:
+        # Verifica se a coluna 'temporada' existe no DataFrame
+        if 'temporada' in current_df_page_specific.columns:
+            # Calculando contagem para temporada 2025
+            count_2025 = current_df_page_specific[current_df_page_specific['temporada'] == 2025].shape[0]
+            
+            # Calculando contagem para temporada 2026
+            count_2026 = current_df_page_specific[current_df_page_specific['temporada'] == 2026].shape[0]
+
+            with col1:
+                st.metric(label="Registros Temporada 2025", value=count_2025)
+            with col2:
+                st.metric(label="Registros Temporada 2026", value=count_2026)
+        else:
+            with col1:
+                st.metric(label="Registros T. 2025", value="N/A")
+                st.caption("Coluna 'temporada' não encontrada.")
+            with col2:
+                st.metric(label="Registros T. 2026", value="N/A")
+                st.caption("Coluna 'temporada' não encontrada.")
+                
+        with col3:
+            # Número total de linhas no DataFrame (df.shape[0])
+            st.metric(label="Total de Registros (Linhas)", value=current_df_page_specific.shape[0])
+        
+        with col4:
+            # Número total de colunas no DataFrame (df.shape[1])
+            st.metric(label="Total de Colunas", value=current_df_page_specific.shape[1])
+
+    else:
+        with col1:
+            st.metric(label="Registros T. 2025", value="N/A")
+            st.caption("Dados não disponíveis.")
+        with col2:
+            st.metric(label="Registros T. 2026", value="N/A")
+            st.caption("Dados não disponíveis.")
+        with col3:
+            st.metric(label="Total Registros", value="N/A")
+            st.caption("Dados não disponíveis.")
+        with col4:
+            st.metric(label="Total Colunas", value="N/A")
+            st.caption("Dados não disponíveis.")
+            
+    st.markdown('</div>', unsafe_allow_html=True) # Fecha a div do cartão
+
+st.markdown("---") # Separador visual simples
+# --- Seção do Contador Decrescente (Mantida fora do card de métricas) ---
+st.subheader("⏳ Status da Sessão de Dados para esta Página") # Título mais específico
 
 if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_df_page_specific is not None:
     # Calcula quando o cache irá expirar (Unix timestamp)
@@ -225,4 +319,5 @@ if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Lim
         st.session_state.cert_path = None
         st.session_state.cert_temp_dir = None
         
-    st.rerun() # Dispara um rerun para que a lógica de carregamento seja reavaliada imediatamente
+
+    st.rerun()
