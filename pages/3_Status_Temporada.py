@@ -147,23 +147,37 @@ st.markdown(
         justify-content: center;
         align-items: center;
     }
-    .metric-card h3 {
-        font-size: 1.2em; /* Tamanho do título do cartão */
+    .metric-card h3 { /* Título principal do cartão, se usado */
+        font-size: 1.3em;
         color: #333333;
         margin-bottom: 10px;
+        font-weight: bold;
     }
-    /* Estas classes são do Streamlit e podem mudar. Inspecione o elemento para confirmar */
+    .card-title-text { /* Novo estilo para títulos de texto específicos que você pode adicionar */
+        font-size: 1.1em;
+        color: #555555;
+        margin-bottom: 5px;
+        font-weight: normal;
+    }
+
+    /* Estilos para os componentes st.metric dentro dos cartões */
+    /* ATENÇÃO: As classes com 'st-emotion-cache' são geradas dinamicamente pelo Streamlit
+       e podem mudar em versões futuras. Verifique sempre no navegador (F12) se necessário. */
     .st-emotion-cache-1r6dm7m { /* Container geral da métrica */
         width: 100%;
     }
     .st-emotion-cache-1r6dm7m p { /* Valor da métrica */
-        font-size: 1.5em;
+        font-size: 1.8em; /* Aumentado para maior destaque */
         font-weight: bold;
         color: #007bff; /* Cor para os valores das métricas */
+        margin: 0; /* Remove margem padrão */
     }
     .st-emotion-cache-1r6dm7m small { /* Label da métrica */
-        color: #555555;
+        font-size: 0.9em; /* Tamanho da fonte do label */
+        color: #777777; /* Cor mais suave para o label */
+        margin-top: 5px;
     }
+    
     /* Ajuste para as colunas Streamlit para que os cards fiquem alinhados */
     .st-emotion-cache-ocqbe5 { /* Esta classe pode variar. Inspecione o elemento para confirmar */
         display: flex;
@@ -228,37 +242,44 @@ col1, col2, col3 = st.columns(3)
 
 # Verifica se o DataFrame foi carregado com sucesso antes de tentar calcular as métricas
 if current_df_page_specific is not None:
-    # Verifica se a coluna 'temporada' existe no DataFrame
-    if 'Temporada' in current_df_page_specific.columns: # Mantido 'temporada' minúsculo
+    # Verifica se a coluna 'Temporada' existe no DataFrame (observação: usei 'Temporada' capitalizado)
+    # Se no seu BD for 'temporada' minúsculo, ajuste para 'temporada'
+    if 'Temporada' in current_df_page_specific.columns: 
         # Calculando contagem para temporada 2025
+        # Assumindo que a coluna 'Temporada' contém valores numéricos (int)
         count_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == "2025"].shape[0]
         
         # Calculando contagem para temporada 2026
+        # Assumindo que a coluna 'Temporada' contém valores numéricos (int)
         count_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == "2026"].shape[0]
 
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric(label="Registros Temporada 2025", value=count_2025)
+            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) # Texto adicional
+            st.metric(label="Temporada 2025", value=count_2025)
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric(label="Registros Temporada 2026", value=count_2026)
+            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) # Texto adicional
+            st.metric(label="Temporada 2026", value=count_2026)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric(label="Registros T. 2025", value="N/A")
-            st.caption("Coluna 'temporada' não encontrada.")
+            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) # Texto adicional
+            st.metric(label="T. 2025", value="N/A")
+            st.caption("Coluna 'Temporada' não encontrada.")
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric(label="Registros T. 2026", value="N/A")
-            st.caption("Coluna 'temporada' não encontrada.")
+            st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) # Texto adicional
+            st.metric(label="T. 2026", value="N/A")
+            st.caption("Coluna 'Temporada' não encontrada.")
             st.markdown('</div>', unsafe_allow_html=True)
             
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        # Número total de linhas no DataFrame (df.shape[0])
+        st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True) # Texto adicional
         st.metric(label="Total de Registros (Linhas)", value=current_df_page_specific.shape[0])
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -266,16 +287,19 @@ else:
     # Se o DataFrame não estiver disponível, exibir cartões com "N/A"
     with col1:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric(label="Registros T. 2025", value="N/A")
+        st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) # Texto adicional
+        st.metric(label="T. 2025", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
     with col2:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric(label="Registros T. 2026", value="N/A")
+        st.markdown('<p class="card-title-text">Registros por Ano</p>', unsafe_allow_html=True) # Texto adicional
+        st.metric(label="T. 2026", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.markdown('<p class="card-title-text">Visão Geral do DataFrame</p>', unsafe_allow_html=True) # Texto adicional
         st.metric(label="Total Registros", value="N/A")
         st.caption("Dados não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -311,7 +335,7 @@ if st.session_state[f"{PAGE_SESSION_STATE_PREFIX}last_loaded"] > 0 and current_d
 else:
     st.info(f"O contador do cache para '{DB_TABLE_NAME}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) ��"):
+if st.button(f"Forçar Recarregamento dos Dados da Tabela '{DB_TABLE_NAME}' (Limpar Cache) 🔄"):
     st.info(f"Forçando a limpeza do cache de dados para '{DB_TABLE_NAME}' e recarregamento...")
     
     # Limpa as entradas de dados do cache específicas desta página
