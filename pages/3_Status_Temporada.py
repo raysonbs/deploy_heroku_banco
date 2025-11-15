@@ -231,10 +231,10 @@ if current_df_page_specific is not None:
     # Verifica se a coluna 'temporada' existe no DataFrame
     if 'Temporada' in current_df_page_specific.columns: # Mantido 'temporada' minúsculo
         # Calculando contagem para temporada 2025
-        count_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == 2025].shape[0]
+        count_2025 = current_df_page_specific[current_df_page_specific['Temporada'] == "2025"].shape[0]
         
         # Calculando contagem para temporada 2026
-        count_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == 2026].shape[0]
+        count_2026 = current_df_page_specific[current_df_page_specific['Temporada'] == "2026"].shape[0]
 
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
