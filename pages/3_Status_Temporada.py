@@ -18,7 +18,7 @@ CACHE_DURATION_SECONDS = API_REFRESH_INTERVAL_MINUTES * 60
 DB_TABLE_NAME_ATIVAS = 'ligas_ativas_total'
 PAGE_SESSION_STATE_PREFIX_ATIVAS = f"{DB_TABLE_NAME_ATIVAS}_"
 
-# Para 'ligas_inativas' (NOVO)
+# Para 'ligas_inativas'
 DB_TABLE_NAME_INATIVAS = 'ligas_inativas'
 PAGE_SESSION_STATE_PREFIX_INATIVAS = f"{DB_TABLE_NAME_INATIVAS}_"
 
@@ -95,7 +95,7 @@ def get_db_engine(cert_path):
     ssl_args = {'ssl': {'ca': cert_path}}
     return create_engine(f'mysql+pymysql://{username}:{password}@{host}:{port}/{database}', connect_args=ssl_args)
 
-def load_data(table_name, page_session_state_prefix):
+def load_data(table_name):
     """
     Carrega os dados do banco de dados MySQL usando o certificado SSL,
     da tabela especificada.
@@ -130,7 +130,7 @@ def get_cached_dataframe(table_name, session_state_prefix):
             time_since_last_load = int(time.time() - st.session_state.get(f"{session_state_prefix}last_loaded", 0))
             add_app_message("warning", f"Cache de dados para '{table_name}' expirado (última carga há {time_since_last_load} segundos). Recarregando dados...")
         
-        temp_df = load_data(table_name, session_state_prefix) 
+        temp_df = load_data(table_name)
         
         if temp_df is not None:
             st.session_state[f"{session_state_prefix}data"] = temp_df
@@ -153,7 +153,7 @@ st.title(f"Diagnóstico de Jogos: Ligas Ativas e Inativas 📊")
 st.write(f"Dados das tabelas `{DB_TABLE_NAME_ATIVAS}` e `{DB_TABLE_NAME_INATIVAS}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 
-# --- CSS Personalizado para os Cartões (Sem Alterações, exceto na lista de ligas) ---
+# --- CSS Personalizado para os Cartões ---
 st.markdown(
     """
     <style>
@@ -195,7 +195,7 @@ st.markdown(
     .league-list li {
         margin-bottom: 5px;
         list-style-type: decimal; /* Garante numeração */
-        color: #333333; /* Cor mais escura para melhor legibilidade na lista */
+        color: #333333; /* Cor mais escura para melhor legibilidade na lista */ 
     }
 
     /* Estilos para os componentes st.metric dentro dos cartões */
@@ -230,26 +230,27 @@ st.markdown(
 current_df_ativas = get_cached_dataframe(DB_TABLE_NAME_ATIVAS, PAGE_SESSION_STATE_PREFIX_ATIVAS)
 current_df_inativas = get_cached_dataframe(DB_TABLE_NAME_INATIVAS, PAGE_SESSION_STATE_PREFIX_INATIVAS)
 
-# --- Exibição dos Dados no Streamlit ---
+# --- Exibição dos Dados no Streamlit (APENAS ligas_ativas_total, conforme solicitado) ---
 if current_df_ativas is not None:
     st.subheader(f"Dados de '{DB_TABLE_NAME_ATIVAS}' Carregados:")
     st.dataframe(current_df_ativas, use_container_width=True)
 else:
     add_app_message("warning", f"Nenhum dado da tabela '{DB_TABLE_NAME_ATIVAS}' disponível para exibição.")
 
+# O dataframe 'ligas_inativas' não será exibido, apenas carregado para processamento.
 if current_df_inativas is not None:
-    st.subheader(f"Dados de '{DB_TABLE_NAME_INATIVAS}' Carregados:")
-    st.dataframe(current_df_inativas, use_container_width=True)
+    add_app_message("info", f"O dataframe '{DB_TABLE_NAME_INATIVAS}' foi carregado em segundo plano para processamento e não é exibido.")
 else:
-    add_app_message("warning", f"Nenhum dado da tabela '{DB_TABLE_NAME_INATIVAS}' disponível para exibição.")
+     add_app_message("warning", f"Nenhum dado da tabela '{DB_TABLE_NAME_INATIVAS}' disponível para processamento.")
+
 
 st.markdown("---") # Separador visual simples
 
 # --- Seção de Métricas em Cartão ---
-st.subheader("📊 Resumo das Métricas")
+st.subheader("�� Resumo das Métricas")
 
-# Adiciona uma quarta coluna para as ligas inativas
-col1, col2, col3, col4 = st.columns(4) 
+# Reduz para 3 colunas
+col1, col2, col3 = st.columns(3) 
 
 # Cartões para Ligas Ativas (Temporada 2025 e 2026)
 if current_df_ativas is not None:
@@ -279,7 +280,7 @@ if current_df_ativas is not None:
                 st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2026]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown('<p class="card-title-text">Nenhuma liga encontrada para 2026.</p>', unsafe_allow_html=True)
+                st.markdown('<p class="card-title-text'>Nenhuma liga encontrada para 2026.</p>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         # Fallback se as colunas 'Temporada' ou 'name' não existirem para ligas ativas
@@ -306,36 +307,39 @@ else:
         st.caption("Dados de ligas ativas não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-# NOVO CARTÃO: Ligas Inativas
+# COLUNA 3: Total de Ligas Ativas e Lista de Ligas Inativas
 with col3:
     st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+    
+    # Total de Ligas Ativas (movido da col4 original)
+    if current_df_ativas is not None:
+        st.metric(label="Total de ligas ativas", value=current_df_ativas.shape[0])
+    else:
+        st.metric(label="Total de ligas ativas", value="N/A")
+        st.caption("Dados de ligas ativas não disponíveis.")
+    
+    st.markdown("<br>", unsafe_allow_html=True) # Quebra de linha para separar visualmente as métricas
+
+    # Ligas Inativas
     if current_df_inativas is not None:
-        if 'name' in current_df_inativas.columns:
+        # **CORREÇÃO AQUI: Usando 'ligas_inativas' como nome da coluna**
+        if 'ligas_inativas' in current_df_inativas.columns:
             count_inativas = current_df_inativas.shape[0]
-            st.metric(label="Total de Ligas Inativas", value=count_inativas)
+            st.metric(label="Total de Ligas Inativas", value=count_inativas, delta_color="inverse") # Adicionei delta_color para indicar algo "negativo"
+            
             if not current_df_inativas.empty:
-                league_names_inativas = current_df_inativas['name'].to_list()
-                st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
+                # **CORREÇÃO AQUI: Extraindo da coluna 'ligas_inativas'**
+                league_names_inativas = current_df_inativas['ligas_inativas'].to_list()
+                st.markdown("<h5 style='text-align:center; color:#555; margin-top:10px;'>Nomes das Ligas Inativas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_inativas]) + "</ol>", unsafe_allow_html=True)
             else:
                 st.markdown('<p class="card-title-text">Nenhuma liga inativa encontrada.</p>', unsafe_allow_html=True)
         else:
             st.metric(label="Total de Ligas Inativas", value="N/A")
-            st.caption("Coluna 'name' não encontrada em ligas inativas.")
+            st.caption("Coluna 'ligas_inativas' não encontrada no dataframe de ligas inativas.") # Corrigido aqui também
     else:
         st.metric(label="Total de Ligas Inativas", value="N/A")
         st.caption("Dados de ligas inativas não disponíveis.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# Cartão para Total de Ligas Ativas (agora em col4)
-with col4:
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-    if current_df_ativas is not None:
-        st.metric(label="Total de ligas ativas", value=current_df_ativas.shape[0])
-    else:
-        st.metric(label="Total de ligas ativas", value="N/A")
-        st.caption("Dados não disponíveis.")
     st.markdown('</div>', unsafe_allow_html=True)
             
 st.markdown("---") # Separador visual simples
@@ -363,7 +367,7 @@ if st.session_state.get(f"{PAGE_SESSION_STATE_PREFIX_ATIVAS}last_loaded", 0) > 0
 else:
     add_app_message("info", f"O contador do cache para '{DB_TABLE_NAME_ATIVAS}' será iniciado após o primeiro carregamento bem-sucedido dos dados.")
 
-# Contador para ligas inativas (NOVO)
+# Contador para ligas inativas
 if st.session_state.get(f"{PAGE_SESSION_STATE_PREFIX_INATIVAS}last_loaded", 0) > 0 and current_df_inativas is not None:
     last_loaded_timestamp_inativas = st.session_state[f"{PAGE_SESSION_STATE_PREFIX_INATIVAS}last_loaded"]
     expiration_timestamp_inativas = last_loaded_timestamp_inativas + CACHE_DURATION_SECONDS
@@ -394,7 +398,7 @@ if st.button(f"Forçar Recarregamento de TODAS as tabelas (Limpar Cache) 🔄"):
     if f"{PAGE_SESSION_STATE_PREFIX_ATIVAS}last_loaded" in st.session_state:
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX_ATIVAS}last_loaded"]
     
-    # Limpa cache de ligas inativas (NOVO)
+    # Limpa cache de ligas inativas
     if f"{PAGE_SESSION_STATE_PREFIX_INATIVAS}data" in st.session_state:
         del st.session_state[f"{PAGE_SESSION_STATE_PREFIX_INATIVAS}data"]
     if f"{PAGE_SESSION_STATE_PREFIX_INATIVAS}last_loaded" in st.session_state:
