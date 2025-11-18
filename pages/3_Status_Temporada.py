@@ -183,19 +183,29 @@ st.markdown(
         margin-bottom: 5px;
         font-weight: normal;
     }
+    .league-list-container { /* NOVO: Contêiner para a lista com fundo escuro */
+        background-color: #333333; /* Fundo escuro para a lista */
+        padding: 10px;
+        border-radius: 8px;
+        margin-top: 10px;
+        width: 100%; /* Ocupa a largura total do cartão */
+        box-sizing: border-box; /* Inclui padding e borda na largura */
+    }
+    .league-list-container h5 { /* NOVO: Títulos das listas dentro do contêiner */
+        color: white !important; /* Força a cor branca para os títulos das listas */
+        margin-bottom: 5px;
+    }
     .league-list { /* Estilo para a lista de ligas */
         text-align: left; /* Alinha a lista à esquerda dentro do card */
         list-style-position: inside; /* Garante que o número esteja dentro do padding */
         padding-left: 0; /* Remove o padding padrão da UL/OL */
-        margin-top: 10px;
+        margin-top: 0; /* Ajusta a margem */
         font-size: 0.9em;
-        /* A cor padrão da lista (se não for sobrescrita nos LI) */
-        color: #666666; 
     }
     .league-list li {
         margin-bottom: 5px;
         list-style-type: decimal; /* Garante numeração */
-        color: #333333; /* Cor mais escura para melhor legibilidade na lista */ 
+        color: white !important; /* Força a cor branca para os itens da lista */
     }
 
     /* Estilos para os componentes st.metric dentro dos cartões */
@@ -230,38 +240,37 @@ st.markdown(
 current_df_ativas = get_cached_dataframe(DB_TABLE_NAME_ATIVAS, PAGE_SESSION_STATE_PREFIX_ATIVAS)
 current_df_inativas = get_cached_dataframe(DB_TABLE_NAME_INATIVAS, PAGE_SESSION_STATE_PREFIX_INATIVAS)
 
-# --- Exibição dos Dados no Streamlit (APENAS ligas_ativas_total, conforme solicitado) ---
+# --- Exibição dos Dados no Streamlit (APENAS ligas_ativas_total) ---
 if current_df_ativas is not None:
     st.subheader(f"Dados de '{DB_TABLE_NAME_ATIVAS}' Carregados:")
     
-    # --- FILTROS PARA LIGAS ATIVAS ---
+    # --- FILTROS PARA LIGAS ATIVAS (APLICADOS SOMENTE NO DATAFRAME DE EXIBIÇÃO) ---
     filter_col1, filter_col2 = st.columns(2)
     
+    filtered_df_for_display = current_df_ativas.copy() # Cópia para aplicar filtros de exibição
+
     selected_season = "Todos"
-    if 'Temporada' in current_df_ativas.columns:
-        all_seasons = ["Todos"] + sorted(current_df_ativas['Temporada'].unique().tolist())
+    if 'Temporada' in filtered_df_for_display.columns:
+        all_seasons = ["Todos"] + sorted(filtered_df_for_display['Temporada'].unique().tolist())
         with filter_col1:
             selected_season = st.selectbox("Filtrar por Temporada:", all_seasons, index=0, key="filter_season")
+        if selected_season != "Todos":
+            filtered_df_for_display = filtered_df_for_display[filtered_df_for_display['Temporada'] == selected_season]
     else:
         st.warning("Coluna 'Temporada' não encontrada no DataFrame de ligas ativas. O filtro não será aplicado.")
 
     selected_name = "Todos"
-    if 'name' in current_df_ativas.columns:
-        all_names = ["Todos"] + sorted(current_df_ativas['name'].unique().tolist())
+    if 'name' in filtered_df_for_display.columns: # IMPORTANTE: verifica no filtered_df_for_display para o caso de ter filtrado por temporada primeiro
+        all_names = ["Todos"] + sorted(filtered_df_for_display['name'].unique().tolist())
         with filter_col2:
             selected_name = st.selectbox("Filtrar por Nome da Liga:", all_names, index=0, key="filter_name")
+        if selected_name != "Todos":
+            filtered_df_for_display = filtered_df_for_display[filtered_df_for_display['name'] == selected_name]
     else:
         st.warning("Coluna 'name' não encontrada no DataFrame de ligas ativas. O filtro não será aplicado.")
 
-    # Aplicar filtros
-    filtered_df_ativas = current_df_ativas.copy()
-    if selected_season != "Todos":
-        filtered_df_ativas = filtered_df_ativas[filtered_df_ativas['Temporada'] == selected_season]
-    if selected_name != "Todos":
-        filtered_df_ativas = filtered_df_ativas[filtered_df_ativas['name'] == selected_name]
-
     # Exibir o DataFrame filtrado
-    st.dataframe(filtered_df_ativas, use_container_width=True)
+    st.dataframe(filtered_df_for_display, use_container_width=True)
 
 else:
     add_app_message("warning", f"Nenhum dado da tabela '{DB_TABLE_NAME_ATIVAS}' disponível para exibição.")
@@ -281,12 +290,12 @@ st.subheader("📊 Resumo das Métricas")
 # Reduz para 3 colunas
 col1, col2, col3 = st.columns(3) 
 
-# Cartões para Ligas Ativas (Temporada 2025 e 2026) - AGORA USANDO filtered_df_ativas
-if current_df_ativas is not None: # Verifica se o DF original foi carregado para evitar erros de coluna
+# Cartões para Ligas Ativas (Temporada 2025 e 2026) - AGORA USANDO current_df_ativas (UNFILTERED)
+if current_df_ativas is not None:
     if 'Temporada' in current_df_ativas.columns and 'name' in current_df_ativas.columns: 
-        # Usa filtered_df_ativas para os cálculos
-        df_ligas_2025 = filtered_df_ativas[filtered_df_ativas['Temporada'] == "2025"]
-        df_ligas_2026 = filtered_df_ativas[filtered_df_ativas['Temporada'] == "2026"]
+        # Usa current_df_ativas (original, não filtrado) para os cálculos dos cartões
+        df_ligas_2025 = current_df_ativas[current_df_ativas['Temporada'] == "2025"]
+        df_ligas_2026 = current_df_ativas[current_df_ativas['Temporada'] == "2026"]
         
         count_2025 = df_ligas_2025.shape[0]
         count_2026 = df_ligas_2026.shape[0]
@@ -294,24 +303,28 @@ if current_df_ativas is not None: # Verifica se o DF original foi carregado para
         with col1:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric(label="Ligas Ativas Temporada 2025", value=count_2025)
+            st.markdown('<div class="league-list-container">', unsafe_allow_html=True) # Contêiner com fundo escuro
             if not df_ligas_2025.empty:
                 league_names_2025 = df_ligas_2025['name'].to_list()
-                st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
+                st.markdown("<h5 style='text-align:center;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2025]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown("<p class='card-title-text'>Nenhuma liga encontrada para 2025.</p>", unsafe_allow_html=True) 
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("<p class='card-title-text' style='color:white;'>Nenhuma liga encontrada para 2025.</p>", unsafe_allow_html=True) 
+            st.markdown('</div>', unsafe_allow_html=True) # Fecha league-list-container
+            st.markdown('</div>', unsafe_allow_html=True) # Fecha metric-card
 
         with col2:
             st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             st.metric(label="Ligas Ativas Temporada 2026", value=count_2026)
+            st.markdown('<div class="league-list-container">', unsafe_allow_html=True) # Contêiner com fundo escuro
             if not df_ligas_2026.empty:
                 league_names_2026 = df_ligas_2026['name'].to_list()
-                st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
+                st.markdown("<h5 style='text-align:center;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2026]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown("<p class='card-title-text'>Nenhuma liga encontrada para 2026.</p>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("<p class='card-title-text' style='color:white;'>Nenhuma liga encontrada para 2026.</p>", unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True) # Fecha league-list-container
+            st.markdown('</div>', unsafe_allow_html=True) # Fecha metric-card
     else:
         # Fallback se as colunas 'Temporada' ou 'name' não existirem para ligas ativas
         with col1:
@@ -337,15 +350,15 @@ else:
         st.caption("Dados de ligas ativas não disponíveis.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-# COLUNA 3: Total de Ligas Ativas (Filtradas) e Lista de Ligas Inativas
+# COLUNA 3: Total de Ligas Ativas (UNFILTERED) e Lista de Ligas Inativas
 with col3:
     st.markdown('<div class="metric-card">', unsafe_allow_html=True)
     
-    # Total de Ligas Ativas (movido da col4 original) - AGORA USANDO filtered_df_ativas
+    # Total de Ligas Ativas (original, não filtrado)
     if current_df_ativas is not None:
-        st.metric(label="Total de ligas ativas (filtradas)", value=filtered_df_ativas.shape[0])
+        st.metric(label="Total de ligas ativas", value=current_df_ativas.shape[0])
     else:
-        st.metric(label="Total de ligas ativas (filtradas)", value="N/A")
+        st.metric(label="Total de ligas ativas", value="N/A")
         st.caption("Dados de ligas ativas não disponíveis.")
     
     st.markdown("<br>", unsafe_allow_html=True) # Quebra de linha para separar visualmente as métricas
@@ -356,12 +369,14 @@ with col3:
             count_inativas = current_df_inativas.shape[0]
             st.metric(label="Total de Ligas Inativas", value=count_inativas, delta_color="inverse")
             
+            st.markdown('<div class="league-list-container">', unsafe_allow_html=True) # Contêiner com fundo escuro
             if not current_df_inativas.empty:
                 league_names_inativas = current_df_inativas['ligas_inativas'].to_list()
-                st.markdown("<h5 style='text-align:center; color:#555; margin-top:10px;'>Nomes das Ligas Inativas:</h5>", unsafe_allow_html=True)
+                st.markdown("<h5 style='text-align:center;'>Nomes das Ligas Inativas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_inativas]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown("<p class='card-title-text'>Nenhuma liga inativa encontrada.</p>", unsafe_allow_html=True)
+                st.markdown("<p class='card-title-text' style='color:white;'>Nenhuma liga inativa encontrada.</p>", unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True) # Fecha league-list-container
         else:
             st.metric(label="Total de Ligas Inativas", value="N/A")
             st.caption("Coluna 'ligas_inativas' não encontrada no dataframe de ligas inativas.")
