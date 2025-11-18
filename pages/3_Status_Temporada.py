@@ -149,7 +149,7 @@ def get_cached_dataframe(table_name, session_state_prefix):
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(layout="wide")
-st.title(f"Diagnóstico de Jogos: Ligas Ativas e Inativas 📊")
+st.title(f"Diagnóstico de Jogos: Ligas Ativas e Inativas ��")
 st.write(f"Dados das tabelas `{DB_TABLE_NAME_ATIVAS}` e `{DB_TABLE_NAME_INATIVAS}` filtrados com cache de sessão por **{API_REFRESH_INTERVAL_MINUTES} minutos** para otimização.")
 
 
@@ -247,7 +247,7 @@ else:
 st.markdown("---") # Separador visual simples
 
 # --- Seção de Métricas em Cartão ---
-st.subheader("�� Resumo das Métricas")
+st.subheader("📊 Resumo das Métricas")
 
 # Reduz para 3 colunas
 col1, col2, col3 = st.columns(3) 
@@ -269,7 +269,8 @@ if current_df_ativas is not None:
                 st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2025]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown('<p class="card-title-text">Nenhuma liga encontrada para 2025.</p>', unsafe_allow_html=True)
+                # CORREÇÃO: Usando aspas duplas para o string literal, e aspas simples para o atributo HTML
+                st.markdown("<p class='card-title-text'>Nenhuma liga encontrada para 2025.</p>", unsafe_allow_html=True) 
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
@@ -280,7 +281,8 @@ if current_df_ativas is not None:
                 st.markdown("<h5 style='text-align:center; color:#555;'>Nomes das Ligas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_2026]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown('<p class="card-title-text'>Nenhuma liga encontrada para 2026.</p>', unsafe_allow_html=True)
+                # CORREÇÃO: Usando aspas duplas para o string literal, e aspas simples para o atributo HTML
+                st.markdown("<p class='card-title-text'>Nenhuma liga encontrada para 2026.</p>", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         # Fallback se as colunas 'Temporada' ou 'name' não existirem para ligas ativas
@@ -333,7 +335,8 @@ with col3:
                 st.markdown("<h5 style='text-align:center; color:#555; margin-top:10px;'>Nomes das Ligas Inativas:</h5>", unsafe_allow_html=True)
                 st.markdown(f"<ol class='league-list'>" + "".join([f"<li>{name}</li>" for name in league_names_inativas]) + "</ol>", unsafe_allow_html=True)
             else:
-                st.markdown('<p class="card-title-text">Nenhuma liga inativa encontrada.</p>', unsafe_allow_html=True)
+                # CORREÇÃO: Usando aspas duplas para o string literal, e aspas simples para o atributo HTML
+                st.markdown("<p class='card-title-text'>Nenhuma liga inativa encontrada.</p>", unsafe_allow_html=True)
         else:
             st.metric(label="Total de Ligas Inativas", value="N/A")
             st.caption("Coluna 'ligas_inativas' não encontrada no dataframe de ligas inativas.") # Corrigido aqui também
